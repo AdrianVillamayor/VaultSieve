@@ -9,6 +9,40 @@ description = "Audit exported password vaults for duplicates and password securi
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["rich>=13.0"]
+license = { text = "MIT" }
+authors = [
+  { name = "Adrii" },
+]
+keywords = [
+  "bitwarden",
+  "breach-check",
+  "cli",
+  "csv",
+  "passwords",
+  "security",
+  "tui",
+  "vault",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "Intended Audience :: Information Technology",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Security",
+  "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/AdrianVillamayor/VaultSieve"
+Repository = "https://github.com/AdrianVillamayor/VaultSieve"
+Issues = "https://github.com/AdrianVillamayor/VaultSieve/issues"
+Changelog = "https://github.com/AdrianVillamayor/VaultSieve/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]

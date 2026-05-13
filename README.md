@@ -6,10 +6,46 @@ VaultSieve audits exported password vaults for exact duplicates, reused password
 
 Current version: `0.1.0a1` preview. Treat exported vault files and generated reports as sensitive.
 
-The project currently supports:
+## Features
 
 - Bitwarden JSON exports.
 - Generic CSV files with `name`, `url`, `username`, `password` columns.
+- Interactive assistant by default with `vaultsieve`.
+- Direct automation with `vaultsieve audit`.
+- Terminal, TXT, JSON, and HTML reports.
+- Optional clean output without exact duplicates.
+- Optional Have I Been Pwned checks using k-anonymity, unique-password caching, and limited concurrency.
+
+## Quick Start
+
+**Install with pipx from GitHub:**
+
+```bash
+pipx install git+https://github.com/AdrianVillamayor/VaultSieve.git
+vaultsieve
+```
+
+**Or via install script:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AdrianVillamayor/VaultSieve/main/install.sh | bash
+```
+
+From a local checkout, run:
+
+```bash
+./install.sh
+```
+
+**Future Homebrew flow:**
+
+```bash
+brew tap AdrianVillamayor/vaultsieve
+brew install vaultsieve
+vaultsieve
+```
+
+See [`docs/install.md`](docs/install.md) for install details and [`docs/release.md`](docs/release.md) for release preparation.
 
 ## Install For Development
 
