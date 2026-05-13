@@ -1,9 +1,12 @@
 import csv
 import json
 
+import pytest
+
 from vaultsieve.audit import run_audit
 from vaultsieve.cleaner import write_clean_output
 from vaultsieve.cli import main
+from vaultsieve.errors import VaultSieveError
 from vaultsieve.models import AuditOptions, AuditReport, Credential, Finding
 from vaultsieve.reports.html import render_html_report
 from vaultsieve.reports.json import render_json_report
@@ -66,6 +69,10 @@ def test_html_report_has_dashboard_filters_and_escapes_content(tmp_path) -> None
     assert "id=\"severity-filter\"" in html
     assert "overflow-y: auto" in html
     assert "max-height: min(820px, 62vh)" in html
+    assert "radial-gradient(circle, var(--dot)" in html
+    assert "font-family: Orbitron" in html
+    assert "rel=\"icon\"" in html
+    assert "VaultSieve" in html
     assert "data-severity=\"critical\"" in html
     assert "Password Vault Audit" in html
     assert "never-render-this" not in html
@@ -105,6 +112,15 @@ def test_csv_clean_output_removes_exact_duplicates(tmp_path) -> None:
     assert len(rows) == 1
 
 
+def test_clean_output_rejects_directory_path(tmp_path) -> None:
+    input_path = tmp_path / "export.json"
+    write_bitwarden_fixture(input_path)
+    report = run_audit(input_path, "bitwarden")
+
+    with pytest.raises(VaultSieveError, match="must be a file path"):
+        write_clean_output(input_path, tmp_path, "bitwarden", report.credentials)
+
+
 def test_cli_audit_smoke(tmp_path) -> None:
     input_path = tmp_path / "export.json"
     report_dir = tmp_path / "reports"
@@ -123,6 +139,8 @@ def test_cli_audit_smoke(tmp_path) -> None:
             str(clean_path),
             "--hibp-workers",
             "2",
+            "--domain-workers",
+            "2",
         ]
     )
 
@@ -130,6 +148,7 @@ def test_cli_audit_smoke(tmp_path) -> None:
     assert (report_dir / "export.txt").exists()
     assert (report_dir / "export.json").exists()
     assert (report_dir / "export.html").exists()
+    assert (report_dir / "vaultsieve-icon.svg").exists()
     assert clean_path.exists()
 
 
@@ -146,6 +165,7 @@ def test_cli_default_report_dir_is_next_to_input(tmp_path) -> None:
     assert (default_report_dir / "export.txt").exists()
     assert (default_report_dir / "export.json").exists()
     assert (default_report_dir / "export.html").exists()
+    assert (default_report_dir / "vaultsieve-icon.svg").exists()
 
 
 def test_cli_missing_file_returns_clean_error(capsys) -> None:
@@ -177,5 +197,6 @@ def test_cli_outputs_only_summary_not_finding_details(tmp_path, capsys) -> None:
     assert exit_code == 0
     assert "VaultSieve audit summary" in captured.out
     assert "Findings:" in captured.out
+    assert "Open HTML report: file://" in captured.out
     assert "These credentials are exact duplicates" not in captured.out
     assert "bitwarden:0" not in captured.out

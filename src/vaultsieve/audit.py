@@ -4,6 +4,7 @@ from pathlib import Path
 from collections.abc import Callable
 
 from vaultsieve.analyzers.breaches import LookupFn, analyze_breaches
+from vaultsieve.analyzers.domains import DomainLookupFn, analyze_domains, extract_domain
 from vaultsieve.analyzers.duplicates import analyze_duplicates
 from vaultsieve.analyzers.passwords import analyze_password_quality
 from vaultsieve.importers.bitwarden import import_bitwarden
@@ -27,6 +28,7 @@ def run_audit(
     options: AuditOptions | None = None,
     *,
     breach_lookup: LookupFn | None = None,
+    domain_lookup: DomainLookupFn | None = None,
     progress: ProgressCallback | None = None,
 ) -> AuditReport:
     audit_options = options or AuditOptions()
@@ -77,6 +79,45 @@ def run_audit(
                     breach_lookup,
                     breach_progress,
                     audit_options.hibp_workers,
+                )
+            )
+
+    if audit_options.check_domains:
+        domains = {
+            extract_domain(url)
+            for credential in credentials
+            for url in credential.urls
+            if extract_domain(url)
+        }
+        total = len(domains)
+        checked = 0
+
+        def domain_progress(_domain: str) -> None:
+            nonlocal checked
+            checked += 1
+            if progress is not None:
+                progress(
+                    f"Checking credential domains ({checked}/{total} unique domains)",
+                    checked if total else None,
+                )
+
+        if progress is not None:
+            progress(f"Checking credential domains (0/{total} unique domains)", 0)
+        if domain_lookup is None:
+            findings.extend(
+                analyze_domains(
+                    credentials,
+                    progress=domain_progress,
+                    max_workers=audit_options.domain_workers,
+                )
+            )
+        else:
+            findings.extend(
+                analyze_domains(
+                    credentials,
+                    domain_lookup,
+                    domain_progress,
+                    audit_options.domain_workers,
                 )
             )
 

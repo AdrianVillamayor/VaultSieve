@@ -4,10 +4,10 @@ from html import escape
 
 from vaultsieve.models import AuditReport, Finding, SEVERITY_ORDER
 
-SEVERITY_LABELS = ("critical", "high", "medium", "low")
+SEVERITY_LABELS = ("critical", "high", "medium", "low", "obsolete")
 
 
-def render_html_report(report: AuditReport) -> str:
+def render_html_report(report: AuditReport, *, favicon_href: str = "vaultsieve-icon.svg") -> str:
     findings = sorted(report.findings, key=lambda finding: SEVERITY_ORDER[finding.severity])
     generated_summary = _render_summary(report)
     filters = _render_filters(findings)
@@ -18,13 +18,18 @@ def render_html_report(report: AuditReport) -> str:
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VaultSieve Audit Report</title>
+  <link rel="icon" href="{escape(favicon_href, quote=True)}" type="image/svg+xml">
   <style>{_render_styles()}</style>
 </head>
 <body>
   <main class="shell">
     <header class="hero">
       <div>
-        <p class="eyebrow">VaultSieve report</p>
+        <div class="brand-lockup" aria-label="VaultSieve">
+          <span class="brand-mark">VS</span>
+          <span class="brand-name">VaultSieve</span>
+        </div>
+        <p class="eyebrow">Local security dossier</p>
         <h1>Password Vault Audit</h1>
         <p class="muted">Local report generated from an exported vault. Full plaintext passwords are not included.</p>
       </div>
@@ -189,18 +194,21 @@ def _render_styles() -> str:
   --high: #b65c00;
   --medium: #a88600;
   --low: #246a73;
+  --obsolete: #59524a;
   --accent: #0b3b3c;
+  --dot: rgba(24, 23, 20, 0.24);
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
   min-height: 100vh;
   background:
-    linear-gradient(90deg, rgba(24, 23, 20, 0.055) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(24, 23, 20, 0.045) 1px, transparent 1px),
+    radial-gradient(circle, var(--dot) 1.15px, transparent 1.35px),
+    radial-gradient(circle, rgba(11, 59, 60, 0.10) 1px, transparent 1.25px),
     radial-gradient(circle at 80% 0%, rgba(11, 59, 60, 0.20), transparent 32rem),
     var(--paper);
-  background-size: 36px 36px, 36px 36px, auto, auto;
+  background-size: 28px 28px, 112px 112px, auto, auto;
+  background-position: 0 0, 14px 14px, 0 0, 0 0;
   color: var(--ink);
   font-family: Georgia, "Times New Roman", serif;
 }
@@ -216,8 +224,11 @@ body {
   padding: 1.1rem;
   margin-bottom: 1rem;
 }
-.hero h1 { font-size: clamp(2.4rem, 7vw, 6.8rem); line-height: 0.82; margin: 0; letter-spacing: -0.08em; text-transform: uppercase; max-width: 720px; }
-.eyebrow { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; }
+.brand-lockup { display: flex; align-items: center; gap: 0.65rem; margin-bottom: 0.9rem; }
+.brand-mark { display: grid; place-items: center; width: 3.1rem; height: 3.1rem; background: var(--charcoal); color: var(--paper); border: 2px solid var(--line); box-shadow: 5px 5px 0 var(--accent); font-family: Orbitron, Eurostile, "Bank Gothic", ui-monospace, monospace; font-weight: 900; letter-spacing: -0.08em; }
+.brand-name { font-family: Orbitron, Eurostile, "Bank Gothic", ui-monospace, monospace; font-size: clamp(1.35rem, 3vw, 2.6rem); font-weight: 900; letter-spacing: 0.03em; text-transform: uppercase; color: var(--accent); text-shadow: 2px 2px 0 rgba(11, 59, 60, 0.14); }
+.hero h1 { font-size: clamp(1.8rem, 4.8vw, 4.7rem); line-height: 0.9; margin: 0; letter-spacing: -0.07em; text-transform: uppercase; max-width: 620px; }
+.eyebrow { color: var(--accent); font-family: Orbitron, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; }
 .muted { color: var(--muted); max-width: 44rem; font-size: 1.05rem; }
 .meta-card, .summary-card, .notice, .filters, .finding-card, .empty-state {
   background: var(--panel);
@@ -233,6 +244,7 @@ body {
 .summary-card.severity-high strong { color: var(--high); }
 .summary-card.severity-medium strong { color: var(--medium); }
 .summary-card.severity-low strong { color: var(--low); }
+.summary-card.severity-obsolete strong { color: var(--obsolete); }
 .notice { padding: 0.85rem 1rem; background: var(--accent); color: var(--paper); box-shadow: 6px 6px 0 var(--line); }
 .filters { margin: 1rem 0 0; padding: 0.85rem; display: grid; grid-template-columns: 2fr 1fr 1fr auto auto; gap: 0.65rem; align-items: end; background: var(--wash); position: sticky; top: 0; z-index: 5; box-shadow: 0 8px 0 rgba(24, 23, 20, 0.14); }
 label { color: var(--muted); display: grid; gap: 0.3rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.08em; }
@@ -254,6 +266,7 @@ button:hover, input:focus, select:focus { outline: 3px solid var(--accent); outl
 .finding-card.severity-high { border-left-color: var(--high); }
 .finding-card.severity-medium { border-left-color: var(--medium); }
 .finding-card.severity-low { border-left-color: var(--low); }
+.finding-card.severity-obsolete { border-left-color: var(--obsolete); }
 details { padding: 0.2rem; }
 summary { cursor: pointer; list-style: none; display: grid; grid-template-columns: auto auto 1fr; gap: 0.7rem; align-items: center; padding: 0.95rem; }
 summary::-webkit-details-marker { display: none; }
@@ -276,6 +289,19 @@ code { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, C
   summary { grid-template-columns: 1fr; }
 }
 """
+
+
+def render_report_favicon_svg() -> str:
+    favicon = """
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+  <rect width='64' height='64' fill='#ece4d0'/>
+  <path d='M10 12h44v40H10z' fill='#201f1b'/>
+  <path d='M18 20h28v24H18z' fill='#0b3b3c'/>
+  <circle cx='32' cy='32' r='6' fill='#ece4d0'/>
+  <path d='M22 50h20l12-38' stroke='#b42318' stroke-width='5'/>
+</svg>
+""".strip()
+    return favicon + "\n"
 
 
 def _render_script() -> str:

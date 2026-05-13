@@ -28,6 +28,7 @@ def print_terminal_report(
                             f"[orange1]high[/orange1]={summary['high']}",
                             f"[yellow]medium[/yellow]={summary['medium']}",
                             f"[blue]low[/blue]={summary['low']}",
+                            f"obsolete={summary['obsolete']}",
                         ]
                     ),
                 ]

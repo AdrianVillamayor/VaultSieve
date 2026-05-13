@@ -4,14 +4,14 @@ import argparse
 from pathlib import Path
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 from vaultsieve import __version__
 from vaultsieve.audit import run_audit
 from vaultsieve.cleaner import write_clean_output
 from vaultsieve.errors import VaultSieveError
 from vaultsieve.models import AuditOptions, InputFormat, Severity
-from vaultsieve.reports.html import render_html_report
+from vaultsieve.progress import AuditProgress
+from vaultsieve.reports.html import render_html_report, render_report_favicon_svg
 from vaultsieve.reports.json import render_json_report
 from vaultsieve.reports.terminal import print_terminal_report
 from vaultsieve.reports.text import render_text_report
@@ -26,12 +26,14 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("input_path", type=Path)
     audit.add_argument("--format", choices=["bitwarden", "csv"], required=True)
     audit.add_argument("--check-breaches", action="store_true")
+    audit.add_argument("--check-domains", action="store_true")
     audit.add_argument("--hibp-workers", type=int, default=4)
+    audit.add_argument("--domain-workers", type=int, default=16)
     audit.add_argument("--report-dir", type=Path)
     audit.add_argument("--clean-output", type=Path)
     audit.add_argument(
         "--min-severity",
-        choices=["critical", "high", "medium", "low"],
+        choices=["critical", "high", "medium", "low", "obsolete"],
         default="low",
     )
 
@@ -70,34 +72,28 @@ def main(argv: list[str] | None = None) -> int:
 
 def _run_audit_command(args: argparse.Namespace) -> int:
     input_format: InputFormat = args.format
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        TimeElapsedColumn(),
-    ) as progress:
-        task_id = progress.add_task("Starting audit", total=None)
-
-        def update_progress(phase: str, completed: int | None) -> None:
-            suffix = f" ({completed} checked)" if completed is not None else ""
-            progress.update(task_id, description=f"{phase}{suffix}")
-
+    with AuditProgress() as progress:
         report = run_audit(
             args.input_path,
             input_format,
             AuditOptions(
                 check_breaches=args.check_breaches,
+                check_domains=args.check_domains,
                 hibp_workers=args.hibp_workers,
+                domain_workers=args.domain_workers,
             ),
-            progress=update_progress,
+            progress=progress.update,
         )
 
-        progress.update(task_id, description="Writing reports")
+        progress.update("Writing reports")
         report_dir = args.report_dir or args.input_path.parent / "vaultsieve_reports"
         try:
             report_dir.mkdir(parents=True, exist_ok=True)
         except OSError as err:
             raise VaultSieveError(f"Cannot create report directory: {report_dir}") from err
         base_name = args.input_path.stem or "vaultsieve"
+        html_path = report_dir / f"{base_name}.html"
+        favicon_path = report_dir / "vaultsieve-icon.svg"
         try:
             (report_dir / f"{base_name}.txt").write_text(
                 render_text_report(report), encoding="utf-8"
@@ -105,14 +101,13 @@ def _run_audit_command(args: argparse.Namespace) -> int:
             (report_dir / f"{base_name}.json").write_text(
                 render_json_report(report), encoding="utf-8"
             )
-            (report_dir / f"{base_name}.html").write_text(
-                render_html_report(report), encoding="utf-8"
-            )
+            favicon_path.write_text(render_report_favicon_svg(), encoding="utf-8")
+            html_path.write_text(render_html_report(report), encoding="utf-8")
         except OSError as err:
             raise VaultSieveError(f"Cannot write reports to: {report_dir}") from err
 
         if args.clean_output is not None:
-            progress.update(task_id, description="Writing clean output")
+            progress.update("Writing clean output")
             removed = write_clean_output(
                 args.input_path,
                 args.clean_output,
@@ -121,10 +116,12 @@ def _run_audit_command(args: argparse.Namespace) -> int:
             )
         else:
             removed = None
-        progress.update(task_id, description="Done")
+        progress.update("Audit complete")
 
     print_terminal_report(report, min_severity=args.min_severity)
+    progress.print_summary()
     print(f"Reports written to {report_dir}")
+    print(f"Open HTML report: {html_path.resolve().as_uri()}")
     if removed is not None:
         print(f"Clean output written to {args.clean_output} ({removed} duplicates removed).")
     return 0

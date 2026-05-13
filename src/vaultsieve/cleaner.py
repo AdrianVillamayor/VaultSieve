@@ -17,6 +17,10 @@ def write_clean_output(
     credentials: tuple[Credential, ...],
 ) -> int:
     remove_ids = duplicate_removal_ids(credentials)
+    if output_path.exists() and output_path.is_dir():
+        raise VaultSieveError(
+            f"Clean output must be a file path, not a directory: {output_path}"
+        )
     try:
         output_path.parent.mkdir(parents=True, exist_ok=True)
     except OSError as err:

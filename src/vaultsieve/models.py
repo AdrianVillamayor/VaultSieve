@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-Severity = Literal["critical", "high", "medium", "low"]
+Severity = Literal["critical", "high", "medium", "low", "obsolete"]
 FindingCategory = Literal[
     "duplicate",
     "reuse",
@@ -12,6 +12,7 @@ FindingCategory = Literal[
     "empty",
     "similar",
     "breached",
+    "domain_missing",
     "input_issue",
 ]
 InputFormat = Literal["bitwarden", "csv"]
@@ -21,6 +22,7 @@ SEVERITY_ORDER: dict[Severity, int] = {
     "high": 1,
     "medium": 2,
     "low": 3,
+    "obsolete": 4,
 }
 
 
@@ -67,7 +69,9 @@ class Finding:
 @dataclass(frozen=True)
 class AuditOptions:
     check_breaches: bool = False
+    check_domains: bool = False
     hibp_workers: int = 4
+    domain_workers: int = 16
     min_password_length: int = 12
 
 
@@ -85,6 +89,7 @@ class AuditReport:
             "high": 0,
             "medium": 0,
             "low": 0,
+            "obsolete": 0,
         }
         for finding in self.findings:
             summary[finding.severity] += 1

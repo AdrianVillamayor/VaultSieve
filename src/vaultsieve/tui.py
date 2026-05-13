@@ -4,14 +4,14 @@ from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.prompt import Confirm, Prompt
 
 from vaultsieve.audit import run_audit
 from vaultsieve.cleaner import write_clean_output
 from vaultsieve.errors import VaultSieveError
 from vaultsieve.models import AuditOptions, InputFormat
-from vaultsieve.reports.html import render_html_report
+from vaultsieve.progress import AuditProgress
+from vaultsieve.reports.html import render_html_report, render_report_favicon_svg
 from vaultsieve.reports.json import render_json_report
 from vaultsieve.reports.terminal import print_terminal_report
 from vaultsieve.reports.text import render_text_report
@@ -58,71 +58,65 @@ def _run_guided_audit(console: Console) -> None:
         "Check Have I Been Pwned? This sends only SHA-1 hash prefixes",
         default=False,
     )
+    check_domains = Confirm.ask(
+        "Check whether saved credential domains still exist?",
+        default=True,
+    )
     default_report_dir = input_path.parent / "vaultsieve_reports"
     report_dir = Path(Prompt.ask("Report directory", default=str(default_report_dir)))
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        TimeElapsedColumn(),
-        console=console,
-    ) as progress:
-        task_id = progress.add_task("Starting audit", total=None)
-
-        def update_progress(phase: str, completed: int | None) -> None:
-            suffix = f" ({completed} checked)" if completed is not None else ""
-            progress.update(task_id, description=f"{phase}{suffix}")
-
+    with AuditProgress(console) as progress:
         report = run_audit(
             input_path,
             input_format,
-            AuditOptions(check_breaches=check_breaches),
-            progress=update_progress,
+            AuditOptions(
+                check_breaches=check_breaches,
+                check_domains=check_domains,
+            ),
+            progress=progress.update,
         )
-        progress.update(task_id, description="Audit complete")
+        progress.update("Audit complete")
 
     print_terminal_report(report, console=console)
+    progress.print_summary()
 
     if Confirm.ask("Write TXT, JSON, and HTML reports?", default=True):
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            TimeElapsedColumn(),
-            console=console,
-        ) as progress:
-            task_id = progress.add_task("Writing reports", total=None)
+        with AuditProgress(console) as report_progress:
+            report_progress.update("Writing TXT report")
             try:
                 report_dir.mkdir(parents=True, exist_ok=True)
             except OSError as err:
                 raise VaultSieveError(f"Cannot create report directory: {report_dir}") from err
             base_name = input_path.stem or "vaultsieve"
+            html_path = report_dir / f"{base_name}.html"
+            favicon_path = report_dir / "vaultsieve-icon.svg"
             try:
                 (report_dir / f"{base_name}.txt").write_text(
                     render_text_report(report), encoding="utf-8"
                 )
-                progress.update(task_id, description="Writing JSON report")
+                report_progress.update("Writing JSON report")
                 (report_dir / f"{base_name}.json").write_text(
                     render_json_report(report), encoding="utf-8"
                 )
-                progress.update(task_id, description="Writing HTML report")
-                (report_dir / f"{base_name}.html").write_text(
-                    render_html_report(report), encoding="utf-8"
-                )
+                report_progress.update("Writing HTML report")
+                favicon_path.write_text(render_report_favicon_svg(), encoding="utf-8")
+                html_path.write_text(render_html_report(report), encoding="utf-8")
             except OSError as err:
                 raise VaultSieveError(f"Cannot write reports to: {report_dir}") from err
-            progress.update(task_id, description="Reports complete")
+            report_progress.update("Reports complete")
+        report_progress.print_summary()
         console.print(f"Reports written to {report_dir}")
+        console.print(f"Open HTML report: {html_path.resolve().as_uri()}")
 
     if Confirm.ask("Create clean output without exact duplicates?", default=False):
-        clean_output = Path(Prompt.ask("Clean output path"))
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            TimeElapsedColumn(),
-            console=console,
-        ) as progress:
-            progress.add_task("Writing clean output", total=None)
+        suffix = ".json" if input_format == "bitwarden" else ".csv"
+        clean_default = input_path.with_name(f"{input_path.stem}_clean{suffix}")
+        clean_output = Path(Prompt.ask("Clean output file path", default=str(clean_default)))
+        with AuditProgress(console) as clean_progress:
+            clean_progress.update("Writing clean output")
             removed = write_clean_output(input_path, clean_output, input_format, report.credentials)
+            clean_progress.update("Clean output complete")
+        clean_progress.print_summary()
         console.print(f"Clean output written to {clean_output} ({removed} duplicates removed).")
 
 

@@ -15,6 +15,7 @@ Current version: `0.1.0a1` preview. Treat exported vault files and generated rep
 - Terminal, TXT, JSON, and HTML reports.
 - Optional clean output without exact duplicates.
 - Optional Have I Been Pwned checks using k-anonymity, unique-password caching, and limited concurrency.
+- Optional domain existence checks to flag credentials for services that may no longer exist.
 
 ## Quick Start
 
@@ -96,6 +97,14 @@ HIBP checks are cached per unique password and run with limited concurrency. The
 ```bash
 ./vaultsieve audit path/to/export.json --format bitwarden --check-breaches --hibp-workers 8
 ```
+
+Check whether saved credential domains still exist:
+
+```bash
+./vaultsieve audit path/to/export.json --format bitwarden --check-domains
+```
+
+Domain checks use DNS resolution only, cache each unique domain for that run, and mark entries as probably obsolete when the domain no longer exists.
 
 Write reports to a chosen directory and generate a clean output without exact duplicates:
 
