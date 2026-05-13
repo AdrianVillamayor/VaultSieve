@@ -48,14 +48,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "tui":
             from vaultsieve.tui import run_tui
 
-            run_tui()
-            return 0
+            return run_tui()
 
         if args.command is None:
             from vaultsieve.tui import run_tui
 
-            run_tui()
-            return 0
+            return run_tui()
 
         if args.command == "audit":
             return _run_audit_command(args)

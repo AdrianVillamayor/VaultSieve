@@ -1,5 +1,7 @@
 # VaultSieve
 
+Logo assets belong in [`assets/logos/`](assets/logos/).
+
 VaultSieve audits exported password vaults for exact duplicates, reused passwords, weak passwords, likely mistakes, and optionally known breached passwords.
 
 Current version: `0.1.0a1` preview. Treat exported vault files and generated reports as sensitive.
@@ -12,7 +14,8 @@ The project currently supports:
 ## Install For Development
 
 ```bash
-python3 -m pip install -e '.[dev]'
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]'
 ```
 
 After installing, the local launcher can be used from the repo root:

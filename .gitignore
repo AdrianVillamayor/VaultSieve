@@ -19,10 +19,10 @@ dist/
 vaultsieve_reports/
 bitwarden_clean.json
 bitwarden_duplicates_report.txt
+*_export.json
+*_clean.json
 
 # Local editor and OS files
 .DS_Store
 .idea/
 .vscode/
-
-*.json

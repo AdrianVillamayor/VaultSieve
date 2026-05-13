@@ -17,7 +17,7 @@ from vaultsieve.reports.terminal import print_terminal_report
 from vaultsieve.reports.text import render_text_report
 
 
-def run_tui() -> None:
+def run_tui() -> int:
     console = Console()
     try:
         console.print(Panel.fit("[bold]VaultSieve[/bold]\nPassword vault security assistant"))
@@ -33,11 +33,14 @@ def run_tui() -> None:
                 _show_format_help(console)
             else:
                 console.print("Bye.")
-                return
+                return 0
     except KeyboardInterrupt:
         console.print("\n[yellow]Cancelled. Bye.[/yellow]")
+        return 130
     except VaultSieveError as err:
         console.print(f"[red]Error:[/red] {err}")
+        return 1
+    return 0
 
 
 def _run_guided_audit(console: Console) -> None:
