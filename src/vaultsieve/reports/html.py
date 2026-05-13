@@ -7,7 +7,12 @@ from vaultsieve.models import AuditReport, Finding, SEVERITY_ORDER
 SEVERITY_LABELS = ("critical", "high", "medium", "low", "obsolete")
 
 
-def render_html_report(report: AuditReport, *, favicon_href: str = "vaultsieve-icon.svg") -> str:
+def render_html_report(
+    report: AuditReport,
+    *,
+    favicon_href: str = "vaultsieve-icon.svg",
+    wordmark_href: str = "vaultsieve-wordmark.svg",
+) -> str:
     findings = sorted(report.findings, key=lambda finding: SEVERITY_ORDER[finding.severity])
     generated_summary = _render_summary(report)
     filters = _render_filters(findings)
@@ -26,8 +31,7 @@ def render_html_report(report: AuditReport, *, favicon_href: str = "vaultsieve-i
     <header class="hero">
       <div>
         <div class="brand-lockup" aria-label="VaultSieve">
-          <span class="brand-mark">VS</span>
-          <span class="brand-name">VaultSieve</span>
+          <img class="brand-wordmark" src="{escape(wordmark_href, quote=True)}" alt="VaultSieve">
         </div>
         <p class="eyebrow">Local security dossier</p>
         <h1>Password Vault Audit</h1>
@@ -224,9 +228,8 @@ body {
   padding: 1.1rem;
   margin-bottom: 1rem;
 }
-.brand-lockup { display: flex; align-items: center; gap: 0.65rem; margin-bottom: 0.9rem; }
-.brand-mark { display: grid; place-items: center; width: 3.1rem; height: 3.1rem; background: var(--charcoal); color: var(--paper); border: 2px solid var(--line); box-shadow: 5px 5px 0 var(--accent); font-family: Orbitron, Eurostile, "Bank Gothic", ui-monospace, monospace; font-weight: 900; letter-spacing: -0.08em; }
-.brand-name { font-family: Orbitron, Eurostile, "Bank Gothic", ui-monospace, monospace; font-size: clamp(1.35rem, 3vw, 2.6rem); font-weight: 900; letter-spacing: 0.03em; text-transform: uppercase; color: var(--accent); text-shadow: 2px 2px 0 rgba(11, 59, 60, 0.14); }
+.brand-lockup { display: flex; align-items: center; margin-bottom: 0.9rem; }
+.brand-wordmark { width: min(420px, 72vw); max-height: 118px; object-fit: contain; object-position: left center; filter: drop-shadow(4px 4px 0 rgba(11, 59, 60, 0.16)); }
 .hero h1 { font-size: clamp(1.8rem, 4.8vw, 4.7rem); line-height: 0.9; margin: 0; letter-spacing: -0.07em; text-transform: uppercase; max-width: 620px; }
 .eyebrow { color: var(--accent); font-family: Orbitron, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; }
 .muted { color: var(--muted); max-width: 44rem; font-size: 1.05rem; }
@@ -289,19 +292,6 @@ code { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, C
   summary { grid-template-columns: 1fr; }
 }
 """
-
-
-def render_report_favicon_svg() -> str:
-    favicon = """
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-  <rect width='64' height='64' fill='#ece4d0'/>
-  <path d='M10 12h44v40H10z' fill='#201f1b'/>
-  <path d='M18 20h28v24H18z' fill='#0b3b3c'/>
-  <circle cx='32' cy='32' r='6' fill='#ece4d0'/>
-  <path d='M22 50h20l12-38' stroke='#b42318' stroke-width='5'/>
-</svg>
-""".strip()
-    return favicon + "\n"
 
 
 def _render_script() -> str:

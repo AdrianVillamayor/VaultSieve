@@ -6,12 +6,13 @@ from pathlib import Path
 from rich.console import Console
 
 from vaultsieve import __version__
+from vaultsieve.assets import copy_logo_assets
 from vaultsieve.audit import run_audit
 from vaultsieve.cleaner import write_clean_output
 from vaultsieve.errors import VaultSieveError
 from vaultsieve.models import AuditOptions, InputFormat, Severity
 from vaultsieve.progress import AuditProgress
-from vaultsieve.reports.html import render_html_report, render_report_favicon_svg
+from vaultsieve.reports.html import render_html_report
 from vaultsieve.reports.json import render_json_report
 from vaultsieve.reports.terminal import print_terminal_report
 from vaultsieve.reports.text import render_text_report
@@ -31,6 +32,12 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("--domain-workers", type=int, default=16)
     audit.add_argument("--report-dir", type=Path)
     audit.add_argument("--clean-output", type=Path)
+    audit.add_argument(
+        "--clean-mode",
+        choices=["duplicates", "obsolete", "all"],
+        default="duplicates",
+        help="Choose what to remove from clean output.",
+    )
     audit.add_argument(
         "--min-severity",
         choices=["critical", "high", "medium", "low", "obsolete"],
@@ -93,7 +100,6 @@ def _run_audit_command(args: argparse.Namespace) -> int:
             raise VaultSieveError(f"Cannot create report directory: {report_dir}") from err
         base_name = args.input_path.stem or "vaultsieve"
         html_path = report_dir / f"{base_name}.html"
-        favicon_path = report_dir / "vaultsieve-icon.svg"
         try:
             (report_dir / f"{base_name}.txt").write_text(
                 render_text_report(report), encoding="utf-8"
@@ -101,7 +107,7 @@ def _run_audit_command(args: argparse.Namespace) -> int:
             (report_dir / f"{base_name}.json").write_text(
                 render_json_report(report), encoding="utf-8"
             )
-            favicon_path.write_text(render_report_favicon_svg(), encoding="utf-8")
+            copy_logo_assets(report_dir)
             html_path.write_text(render_html_report(report), encoding="utf-8")
         except OSError as err:
             raise VaultSieveError(f"Cannot write reports to: {report_dir}") from err
@@ -113,13 +119,14 @@ def _run_audit_command(args: argparse.Namespace) -> int:
                 args.clean_output,
                 input_format,
                 report.credentials,
+                report.findings,
+                args.clean_mode,
             )
         else:
             removed = None
         progress.update("Audit complete")
 
     print_terminal_report(report, min_severity=args.min_severity)
-    progress.print_summary()
     print(f"Reports written to {report_dir}")
     print(f"Open HTML report: {html_path.resolve().as_uri()}")
     if removed is not None:

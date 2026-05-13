@@ -3,11 +3,14 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
+from typing import Literal
 
 from vaultsieve.analyzers.duplicates import duplicate_removal_ids
 from vaultsieve.errors import VaultSieveError
 from vaultsieve.importers.bitwarden import load_bitwarden_data
-from vaultsieve.models import Credential, InputFormat
+from vaultsieve.models import Credential, Finding, InputFormat
+
+CleanMode = Literal["duplicates", "obsolete", "all"]
 
 
 def write_clean_output(
@@ -15,8 +18,10 @@ def write_clean_output(
     output_path: Path,
     input_format: InputFormat,
     credentials: tuple[Credential, ...],
+    findings: tuple[Finding, ...] = (),
+    mode: CleanMode = "duplicates",
 ) -> int:
-    remove_ids = duplicate_removal_ids(credentials)
+    remove_ids = removal_ids(credentials, findings, mode)
     if output_path.exists() and output_path.is_dir():
         raise VaultSieveError(
             f"Clean output must be a file path, not a directory: {output_path}"
@@ -30,6 +35,24 @@ def write_clean_output(
     if input_format == "csv":
         return _write_clean_csv(output_path, credentials, remove_ids)
     raise ValueError(f"Unsupported input format: {input_format}")
+
+
+def removal_ids(
+    credentials: tuple[Credential, ...],
+    findings: tuple[Finding, ...] = (),
+    mode: CleanMode = "duplicates",
+) -> set[str]:
+    if mode not in {"duplicates", "obsolete", "all"}:
+        raise VaultSieveError(f"Unsupported clean mode: {mode}")
+
+    remove: set[str] = set()
+    if mode in {"duplicates", "all"}:
+        remove.update(duplicate_removal_ids(credentials))
+    if mode in {"obsolete", "all"}:
+        for finding in findings:
+            if finding.category == "domain_missing":
+                remove.update(finding.credential_ids)
+    return remove
 
 
 def _write_clean_bitwarden(

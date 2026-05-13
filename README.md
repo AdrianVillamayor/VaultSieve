@@ -112,6 +112,15 @@ Write reports to a chosen directory and generate a clean output without exact du
 ./vaultsieve audit path/to/export.json --format bitwarden --report-dir reports --clean-output clean.json
 ```
 
+Choose what the clean output removes:
+
+```bash
+./vaultsieve audit path/to/export.json --format bitwarden --check-domains --clean-output clean.json --clean-mode obsolete
+./vaultsieve audit path/to/export.json --format bitwarden --check-domains --clean-output clean.json --clean-mode all
+```
+
+Clean modes are `duplicates`, `obsolete`, and `all`. Obsolete entries are credentials whose saved domain no longer resolves.
+
 If `--report-dir` is omitted, reports are written next to the input file in `vaultsieve_reports/`.
 
 ## TUI

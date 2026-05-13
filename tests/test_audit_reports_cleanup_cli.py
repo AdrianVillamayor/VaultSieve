@@ -112,6 +112,70 @@ def test_csv_clean_output_removes_exact_duplicates(tmp_path) -> None:
     assert len(rows) == 1
 
 
+def test_csv_clean_output_can_remove_obsolete_entries(tmp_path) -> None:
+    input_path = tmp_path / "passwords.csv"
+    output_path = tmp_path / "clean.csv"
+    input_path.write_text(
+        "name,url,username,password\n"
+        "Old,https://gone.test,alice,Secret123!\n"
+        "Active,https://example.com,bob,Better123!\n",
+        encoding="utf-8",
+    )
+    report = run_audit(
+        input_path,
+        "csv",
+        AuditOptions(check_domains=True),
+        domain_lookup=lambda domain: domain != "gone.test",
+    )
+
+    removed = write_clean_output(
+        input_path,
+        output_path,
+        "csv",
+        report.credentials,
+        report.findings,
+        "obsolete",
+    )
+
+    with output_path.open("r", encoding="utf-8", newline="") as file:
+        rows = list(csv.DictReader(file))
+    assert removed == 1
+    assert [row["name"] for row in rows] == ["Active"]
+
+
+def test_csv_clean_output_all_removes_duplicates_and_obsolete(tmp_path) -> None:
+    input_path = tmp_path / "passwords.csv"
+    output_path = tmp_path / "clean.csv"
+    input_path.write_text(
+        "name,url,username,password\n"
+        "Old,https://gone.test,alice,Secret123!\n"
+        "Dup,https://example.com,bob,Better123!\n"
+        "Dup,https://example.com,bob,Better123!\n"
+        "Keep,https://example.org,eve,Another123!\n",
+        encoding="utf-8",
+    )
+    report = run_audit(
+        input_path,
+        "csv",
+        AuditOptions(check_domains=True),
+        domain_lookup=lambda domain: domain != "gone.test",
+    )
+
+    removed = write_clean_output(
+        input_path,
+        output_path,
+        "csv",
+        report.credentials,
+        report.findings,
+        "all",
+    )
+
+    with output_path.open("r", encoding="utf-8", newline="") as file:
+        rows = list(csv.DictReader(file))
+    assert removed == 2
+    assert [row["name"] for row in rows] == ["Dup", "Keep"]
+
+
 def test_clean_output_rejects_directory_path(tmp_path) -> None:
     input_path = tmp_path / "export.json"
     write_bitwarden_fixture(input_path)
@@ -149,6 +213,7 @@ def test_cli_audit_smoke(tmp_path) -> None:
     assert (report_dir / "export.json").exists()
     assert (report_dir / "export.html").exists()
     assert (report_dir / "vaultsieve-icon.svg").exists()
+    assert (report_dir / "vaultsieve-wordmark.svg").exists()
     assert clean_path.exists()
 
 
@@ -166,6 +231,7 @@ def test_cli_default_report_dir_is_next_to_input(tmp_path) -> None:
     assert (default_report_dir / "export.json").exists()
     assert (default_report_dir / "export.html").exists()
     assert (default_report_dir / "vaultsieve-icon.svg").exists()
+    assert (default_report_dir / "vaultsieve-wordmark.svg").exists()
 
 
 def test_cli_missing_file_returns_clean_error(capsys) -> None:

@@ -6,12 +6,13 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 
+from vaultsieve.assets import copy_logo_assets
 from vaultsieve.audit import run_audit
 from vaultsieve.cleaner import write_clean_output
 from vaultsieve.errors import VaultSieveError
 from vaultsieve.models import AuditOptions, InputFormat
 from vaultsieve.progress import AuditProgress
-from vaultsieve.reports.html import render_html_report, render_report_favicon_svg
+from vaultsieve.reports.html import render_html_report
 from vaultsieve.reports.json import render_json_report
 from vaultsieve.reports.terminal import print_terminal_report
 from vaultsieve.reports.text import render_text_report
@@ -78,7 +79,6 @@ def _run_guided_audit(console: Console) -> None:
         progress.update("Audit complete")
 
     print_terminal_report(report, console=console)
-    progress.print_summary()
 
     if Confirm.ask("Write TXT, JSON, and HTML reports?", default=True):
         with AuditProgress(console) as report_progress:
@@ -89,7 +89,6 @@ def _run_guided_audit(console: Console) -> None:
                 raise VaultSieveError(f"Cannot create report directory: {report_dir}") from err
             base_name = input_path.stem or "vaultsieve"
             html_path = report_dir / f"{base_name}.html"
-            favicon_path = report_dir / "vaultsieve-icon.svg"
             try:
                 (report_dir / f"{base_name}.txt").write_text(
                     render_text_report(report), encoding="utf-8"
@@ -99,24 +98,34 @@ def _run_guided_audit(console: Console) -> None:
                     render_json_report(report), encoding="utf-8"
                 )
                 report_progress.update("Writing HTML report")
-                favicon_path.write_text(render_report_favicon_svg(), encoding="utf-8")
+                copy_logo_assets(report_dir)
                 html_path.write_text(render_html_report(report), encoding="utf-8")
             except OSError as err:
                 raise VaultSieveError(f"Cannot write reports to: {report_dir}") from err
             report_progress.update("Reports complete")
-        report_progress.print_summary()
         console.print(f"Reports written to {report_dir}")
         console.print(f"Open HTML report: {html_path.resolve().as_uri()}")
 
     if Confirm.ask("Create clean output without exact duplicates?", default=False):
+        clean_mode = Prompt.ask(
+            "What should the clean file remove?",
+            choices=["duplicates", "obsolete", "all"],
+            default="duplicates",
+        )
         suffix = ".json" if input_format == "bitwarden" else ".csv"
         clean_default = input_path.with_name(f"{input_path.stem}_clean{suffix}")
         clean_output = Path(Prompt.ask("Clean output file path", default=str(clean_default)))
         with AuditProgress(console) as clean_progress:
             clean_progress.update("Writing clean output")
-            removed = write_clean_output(input_path, clean_output, input_format, report.credentials)
+            removed = write_clean_output(
+                input_path,
+                clean_output,
+                input_format,
+                report.credentials,
+                report.findings,
+                clean_mode,
+            )
             clean_progress.update("Clean output complete")
-        clean_progress.print_summary()
         console.print(f"Clean output written to {clean_output} ({removed} duplicates removed).")
 
 
