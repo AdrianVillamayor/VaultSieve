@@ -27,7 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("--format", choices=["bitwarden", "csv"], required=True)
     audit.add_argument("--check-breaches", action="store_true")
     audit.add_argument("--hibp-workers", type=int, default=4)
-    audit.add_argument("--report-dir", type=Path, default=Path("vaultsieve_reports"))
+    audit.add_argument("--report-dir", type=Path)
     audit.add_argument("--clean-output", type=Path)
     audit.add_argument(
         "--min-severity",
@@ -92,23 +92,24 @@ def _run_audit_command(args: argparse.Namespace) -> int:
         )
 
         progress.update(task_id, description="Writing reports")
+        report_dir = args.report_dir or args.input_path.parent / "vaultsieve_reports"
         try:
-            args.report_dir.mkdir(parents=True, exist_ok=True)
+            report_dir.mkdir(parents=True, exist_ok=True)
         except OSError as err:
-            raise VaultSieveError(f"Cannot create report directory: {args.report_dir}") from err
+            raise VaultSieveError(f"Cannot create report directory: {report_dir}") from err
         base_name = args.input_path.stem or "vaultsieve"
         try:
-            (args.report_dir / f"{base_name}.txt").write_text(
+            (report_dir / f"{base_name}.txt").write_text(
                 render_text_report(report), encoding="utf-8"
             )
-            (args.report_dir / f"{base_name}.json").write_text(
+            (report_dir / f"{base_name}.json").write_text(
                 render_json_report(report), encoding="utf-8"
             )
-            (args.report_dir / f"{base_name}.html").write_text(
+            (report_dir / f"{base_name}.html").write_text(
                 render_html_report(report), encoding="utf-8"
             )
         except OSError as err:
-            raise VaultSieveError(f"Cannot write reports to: {args.report_dir}") from err
+            raise VaultSieveError(f"Cannot write reports to: {report_dir}") from err
 
         if args.clean_output is not None:
             progress.update(task_id, description="Writing clean output")
@@ -123,6 +124,7 @@ def _run_audit_command(args: argparse.Namespace) -> int:
         progress.update(task_id, description="Done")
 
     print_terminal_report(report, min_severity=args.min_severity)
+    print(f"Reports written to {report_dir}")
     if removed is not None:
         print(f"Clean output written to {args.clean_output} ({removed} duplicates removed).")
     return 0

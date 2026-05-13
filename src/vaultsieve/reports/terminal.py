@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from rich.console import Console
-from rich.table import Table
+from rich.panel import Panel
 
-from vaultsieve.models import AuditReport, SEVERITY_ORDER, Severity
+from vaultsieve.models import AuditReport, Severity
 
 
 def print_terminal_report(
@@ -13,30 +13,25 @@ def print_terminal_report(
     console: Console | None = None,
 ) -> None:
     output = console or Console()
-    output.print(f"[bold]VaultSieve audit:[/bold] {report.input_path}")
-    output.print(f"Credentials: {len(report.credentials)}")
-
-    summary = Table(title="Findings by severity")
-    summary.add_column("Severity")
-    summary.add_column("Count", justify="right")
-    for severity, count in report.summary_by_severity.items():
-        summary.add_row(severity, str(count))
-    output.print(summary)
-
-    max_rank = SEVERITY_ORDER[min_severity]
-    findings = [
-        finding for finding in report.findings if SEVERITY_ORDER[finding.severity] <= max_rank
-    ]
-    table = Table(title="Findings")
-    table.add_column("Severity")
-    table.add_column("Category")
-    table.add_column("Credentials")
-    table.add_column("Explanation")
-    for finding in findings:
-        table.add_row(
-            finding.severity,
-            finding.category,
-            ", ".join(finding.credential_ids),
-            finding.explanation,
+    summary = report.summary_by_severity
+    output.print(
+        Panel.fit(
+            "\n".join(
+                [
+                    f"[bold]Input:[/bold] {report.input_path}",
+                    f"[bold]Format:[/bold] {report.input_format}",
+                    f"[bold]Credentials:[/bold] {len(report.credentials)}",
+                    f"[bold]Findings:[/bold] {len(report.findings)}",
+                    " ".join(
+                        [
+                            f"[red]critical[/red]={summary['critical']}",
+                            f"[orange1]high[/orange1]={summary['high']}",
+                            f"[yellow]medium[/yellow]={summary['medium']}",
+                            f"[blue]low[/blue]={summary['low']}",
+                        ]
+                    ),
+                ]
+            ),
+            title="VaultSieve audit summary",
         )
-    output.print(table)
+    )

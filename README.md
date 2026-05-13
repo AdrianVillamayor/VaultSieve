@@ -103,6 +103,8 @@ Write reports to a chosen directory and generate a clean output without exact du
 ./vaultsieve audit path/to/export.json --format bitwarden --report-dir reports --clean-output clean.json
 ```
 
+If `--report-dir` is omitted, reports are written next to the input file in `vaultsieve_reports/`.
+
 ## TUI
 
 Start the guided terminal flow explicitly:

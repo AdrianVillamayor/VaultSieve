@@ -58,7 +58,8 @@ def _run_guided_audit(console: Console) -> None:
         "Check Have I Been Pwned? This sends only SHA-1 hash prefixes",
         default=False,
     )
-    report_dir = Path(Prompt.ask("Report directory", default="vaultsieve_reports"))
+    default_report_dir = input_path.parent / "vaultsieve_reports"
+    report_dir = Path(Prompt.ask("Report directory", default=str(default_report_dir)))
 
     with Progress(
         SpinnerColumn(),
