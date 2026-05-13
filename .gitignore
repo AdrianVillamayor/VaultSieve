@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build artifacts
+build/
+dist/
+
+# Local VaultSieve outputs
+vaultsieve_reports/
+bitwarden_clean.json
+bitwarden_duplicates_report.txt
+
+# Local editor and OS files
+.DS_Store
+.idea/
+.vscode/
+
+*.json
