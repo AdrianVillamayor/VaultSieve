@@ -13,16 +13,21 @@ from vaultsieve.reports.json import render_json_report
 
 
 def write_bitwarden_fixture(path) -> None:
-    item = {
+    older_item = {
         "type": 1,
         "name": "Example",
+        "revisionDate": "2024-01-01T00:00:00Z",
         "login": {
             "username": "alice",
             "password": "Secret123!",
             "uris": [{"uri": "https://example.com"}],
         },
     }
-    path.write_text(json.dumps({"items": [item, item]}), encoding="utf-8")
+    newer_item = {
+        **older_item,
+        "revisionDate": "2024-02-01T00:00:00Z",
+    }
+    path.write_text(json.dumps({"items": [older_item, newer_item]}), encoding="utf-8")
 
 
 def test_run_audit_and_reports_exclude_plaintext_password(tmp_path) -> None:
@@ -68,13 +73,14 @@ def test_html_report_has_dashboard_filters_and_escapes_content(tmp_path) -> None
     assert "id=\"search\"" in html
     assert "id=\"severity-filter\"" in html
     assert "overflow-y: auto" in html
-    assert "max-height: min(820px, 62vh)" in html
+    assert "max-height: min(760px, 64vh)" in html
     assert "radial-gradient(circle, var(--dot)" in html
-    assert "font-family: Orbitron" in html
+    assert "--accent-soft" in html
     assert "rel=\"icon\"" in html
     assert "VaultSieve" in html
+    assert "class=\"brand-icon\"" in html
     assert "data-severity=\"critical\"" in html
-    assert "Password Vault Audit" in html
+    assert "Password vault audit" in html
     assert "never-render-this" not in html
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
@@ -97,9 +103,9 @@ def test_csv_clean_output_removes_exact_duplicates(tmp_path) -> None:
     input_path = tmp_path / "passwords.csv"
     output_path = tmp_path / "clean.csv"
     input_path.write_text(
-        "name,url,username,password\n"
-        "Example,https://example.com,alice,Secret123!\n"
-        "Example,https://example.com,alice,Secret123!\n",
+        "name,url,username,password,updated_at\n"
+        "Example,https://example.com,alice,Secret123!,2024-01-01T00:00:00Z\n"
+        "Example,https://example.com,alice,Secret123!,2024-02-01T00:00:00Z\n",
         encoding="utf-8",
     )
     report = run_audit(input_path, "csv")
@@ -168,6 +174,7 @@ def test_csv_clean_output_all_removes_duplicates_and_obsolete(tmp_path) -> None:
         report.credentials,
         report.findings,
         "all",
+        {"csv:2"},
     )
 
     with output_path.open("r", encoding="utf-8", newline="") as file:
@@ -201,6 +208,8 @@ def test_cli_audit_smoke(tmp_path) -> None:
             str(report_dir),
             "--clean-output",
             str(clean_path),
+            "--clean-mode",
+            "obsolete",
             "--hibp-workers",
             "2",
             "--domain-workers",

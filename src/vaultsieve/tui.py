@@ -9,6 +9,7 @@ from rich.prompt import Confirm, Prompt
 from vaultsieve.assets import copy_logo_assets
 from vaultsieve.audit import run_audit
 from vaultsieve.cleaner import write_clean_output
+from vaultsieve.config import AppConfig, config_path, load_config, parse_output_formats, save_config
 from vaultsieve.errors import VaultSieveError
 from vaultsieve.models import AuditOptions, InputFormat
 from vaultsieve.progress import AuditProgress
@@ -21,17 +22,22 @@ from vaultsieve.reports.text import render_text_report
 def run_tui() -> int:
     console = Console()
     try:
+        if not config_path().exists():
+            _run_first_use_settings(console)
         console.print(Panel.fit("[bold]VaultSieve[/bold]\nPassword vault security assistant"))
         while True:
             console.print("\n[bold]What do you want to do?[/bold]")
             console.print("1. Audit a vault export")
             console.print("2. Show supported input formats")
-            console.print("3. Exit")
-            choice = Prompt.ask("Choose an option", choices=["1", "2", "3", "q"], default="1")
+            console.print("3. Settings")
+            console.print("4. Exit")
+            choice = Prompt.ask("Choose an option", choices=["1", "2", "3", "4", "q"], default="1")
             if choice == "1":
                 _run_guided_audit(console)
             elif choice == "2":
                 _show_format_help(console)
+            elif choice == "3":
+                _run_settings(console)
             else:
                 console.print("Bye.")
                 return 0
@@ -45,6 +51,7 @@ def run_tui() -> int:
 
 
 def _run_guided_audit(console: Console) -> None:
+    config = load_config()
     input_value = Prompt.ask("Input file path or 'q' to cancel")
     if input_value.lower() in {"q", "quit", "exit"}:
         console.print("Cancelled.")
@@ -57,13 +64,13 @@ def _run_guided_audit(console: Console) -> None:
     )
     check_breaches = Confirm.ask(
         "Check Have I Been Pwned? This sends only SHA-1 hash prefixes",
-        default=False,
+        default=config.check_breaches,
     )
     check_domains = Confirm.ask(
         "Check whether saved credential domains still exist?",
-        default=True,
+        default=config.check_domains,
     )
-    default_report_dir = input_path.parent / "vaultsieve_reports"
+    default_report_dir = Path(config.report_dir) if config.report_dir else input_path.parent / "vaultsieve_reports"
     report_dir = Path(Prompt.ask("Report directory", default=str(default_report_dir)))
 
     with AuditProgress(console) as progress:
@@ -73,6 +80,9 @@ def _run_guided_audit(console: Console) -> None:
             AuditOptions(
                 check_breaches=check_breaches,
                 check_domains=check_domains,
+                hibp_workers=config.hibp_workers,
+                domain_workers=config.domain_workers,
+                min_password_length=config.min_password_length,
             ),
             progress=progress.update,
         )
@@ -80,7 +90,10 @@ def _run_guided_audit(console: Console) -> None:
 
     print_terminal_report(report, console=console)
 
-    if Confirm.ask("Write TXT, JSON, and HTML reports?", default=True):
+    if Confirm.ask(
+        f"Write reports ({', '.join(config.output_formats)})?",
+        default=True,
+    ):
         with AuditProgress(console) as report_progress:
             report_progress.update("Writing TXT report")
             try:
@@ -90,23 +103,27 @@ def _run_guided_audit(console: Console) -> None:
             base_name = input_path.stem or "vaultsieve"
             html_path = report_dir / f"{base_name}.html"
             try:
-                (report_dir / f"{base_name}.txt").write_text(
-                    render_text_report(report), encoding="utf-8"
-                )
-                report_progress.update("Writing JSON report")
-                (report_dir / f"{base_name}.json").write_text(
-                    render_json_report(report), encoding="utf-8"
-                )
-                report_progress.update("Writing HTML report")
-                copy_logo_assets(report_dir)
-                html_path.write_text(render_html_report(report), encoding="utf-8")
+                if "txt" in config.output_formats:
+                    (report_dir / f"{base_name}.txt").write_text(
+                        render_text_report(report), encoding="utf-8"
+                    )
+                if "json" in config.output_formats:
+                    report_progress.update("Writing JSON report")
+                    (report_dir / f"{base_name}.json").write_text(
+                        render_json_report(report), encoding="utf-8"
+                    )
+                if "html" in config.output_formats:
+                    report_progress.update("Writing HTML report")
+                    copy_logo_assets(report_dir)
+                    html_path.write_text(render_html_report(report), encoding="utf-8")
             except OSError as err:
                 raise VaultSieveError(f"Cannot write reports to: {report_dir}") from err
             report_progress.update("Reports complete")
         console.print(f"Reports written to {report_dir}")
-        console.print(f"Open HTML report: {html_path.resolve().as_uri()}")
+        if "html" in config.output_formats:
+            console.print(f"Open HTML report: {html_path.resolve().as_uri()}")
 
-    if Confirm.ask("Create clean output without exact duplicates?", default=False):
+    if Confirm.ask("Create clean output?", default=False):
         clean_mode = Prompt.ask(
             "What should the clean file remove?",
             choices=["duplicates", "obsolete", "all"],
@@ -126,10 +143,95 @@ def _run_guided_audit(console: Console) -> None:
                 clean_mode,
             )
             clean_progress.update("Clean output complete")
-        console.print(f"Clean output written to {clean_output} ({removed} duplicates removed).")
+        console.print(f"Clean output written to {clean_output} ({removed} entries removed).")
 
 
 def _show_format_help(console: Console) -> None:
     console.print("[bold]Supported input formats[/bold]")
     console.print("Bitwarden JSON: standard Bitwarden JSON export; login items use type == 1.")
     console.print("CSV: required columns are name, url, username, password.")
+
+
+def _run_settings(console: Console) -> None:
+    config = load_config()
+    while True:
+        values = config.to_dict()
+        console.print(f"\n[bold]Settings[/bold] ({config_path()})")
+        console.print(f"1. Check Have I Been Pwned by default: {values['check_breaches']}")
+        console.print(f"2. Check domains by default: {values['check_domains']}")
+        console.print(f"3. HIBP workers: {values['hibp_workers']}")
+        console.print(f"4. Domain workers: {values['domain_workers']}")
+        console.print(f"5. Minimum password length: {values['min_password_length']}")
+        console.print(f"6. Report directory: {values['report_dir'] or '(next to input)'}")
+        console.print(f"7. Output formats: {', '.join(config.output_formats)}")
+        console.print("8. Back")
+        choice = Prompt.ask("Setting to change", choices=["1", "2", "3", "4", "5", "6", "7", "8", "q"], default="8")
+        if choice in {"8", "q"}:
+            return
+        config = _updated_config_from_choice(console, config, choice)
+        path = save_config(config)
+        console.print(f"Saved settings to {path}")
+
+
+def _updated_config_from_choice(console: Console, config: AppConfig, choice: str) -> AppConfig:
+    values = config.to_dict()
+    if choice == "1":
+        values["check_breaches"] = Confirm.ask("Check Have I Been Pwned by default?", default=config.check_breaches)
+    elif choice == "2":
+        values["check_domains"] = Confirm.ask("Check domains by default?", default=config.check_domains)
+    elif choice == "3":
+        values["hibp_workers"] = _ask_positive_int("HIBP workers", config.hibp_workers)
+    elif choice == "4":
+        values["domain_workers"] = _ask_positive_int("Domain workers", config.domain_workers)
+    elif choice == "5":
+        values["min_password_length"] = _ask_positive_int("Minimum password length", config.min_password_length)
+    elif choice == "6":
+        values["report_dir"] = Prompt.ask(
+            "Report directory, empty means next to input",
+            default=config.report_dir,
+        ).strip()
+    elif choice == "7":
+        values["output_formats"] = parse_output_formats(
+            Prompt.ask(
+                "Output formats (html, json, txt, all, or comma-separated)",
+                default=",".join(config.output_formats),
+            )
+        )
+    return AppConfig(**values)
+
+
+def _run_first_use_settings(console: Console) -> None:
+    console.print(Panel.fit("[bold]First run setup[/bold]\nChoose defaults once; you can change them later in Settings."))
+    config = AppConfig(
+        check_breaches=Confirm.ask(
+            "Check Have I Been Pwned by default? This sends only SHA-1 hash prefixes",
+            default=False,
+        ),
+        check_domains=Confirm.ask("Check credential domains by default?", default=True),
+        hibp_workers=_ask_positive_int("HIBP workers", 4),
+        domain_workers=_ask_positive_int("Domain workers", 16),
+        min_password_length=_ask_positive_int("Minimum password length", 12),
+        report_dir=Prompt.ask(
+            "Default report directory, empty means next to input",
+            default="",
+        ).strip(),
+        output_formats=parse_output_formats(
+            Prompt.ask(
+                "Default output formats (html, json, txt, all, or comma-separated)",
+                default="all",
+            )
+        ),
+    )
+    path = save_config(config)
+    console.print(f"Saved settings to {path}")
+
+
+def _ask_positive_int(label: str, default: int) -> int:
+    while True:
+        value = Prompt.ask(label, default=str(default))
+        try:
+            parsed = int(value)
+        except ValueError:
+            continue
+        if parsed > 0:
+            return parsed

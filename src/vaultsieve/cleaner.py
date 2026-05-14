@@ -20,8 +20,9 @@ def write_clean_output(
     credentials: tuple[Credential, ...],
     findings: tuple[Finding, ...] = (),
     mode: CleanMode = "duplicates",
+    duplicate_remove_ids: set[str] | None = None,
 ) -> int:
-    remove_ids = removal_ids(credentials, findings, mode)
+    remove_ids = removal_ids(credentials, findings, mode, duplicate_remove_ids)
     if output_path.exists() and output_path.is_dir():
         raise VaultSieveError(
             f"Clean output must be a file path, not a directory: {output_path}"
@@ -41,13 +42,18 @@ def removal_ids(
     credentials: tuple[Credential, ...],
     findings: tuple[Finding, ...] = (),
     mode: CleanMode = "duplicates",
+    duplicate_remove_ids: set[str] | None = None,
 ) -> set[str]:
     if mode not in {"duplicates", "obsolete", "all"}:
         raise VaultSieveError(f"Unsupported clean mode: {mode}")
 
     remove: set[str] = set()
     if mode in {"duplicates", "all"}:
-        remove.update(duplicate_removal_ids(credentials))
+        if duplicate_remove_ids is None:
+            remove.update(duplicate_removal_ids(credentials))
+        else:
+            known_ids = {credential.id for credential in credentials}
+            remove.update(credential_id for credential_id in duplicate_remove_ids if credential_id in known_ids)
     if mode in {"obsolete", "all"}:
         for finding in findings:
             if finding.category == "domain_missing":

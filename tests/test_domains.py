@@ -1,4 +1,6 @@
-from vaultsieve.analyzers.domains import analyze_domains, extract_domain
+import socket
+
+from vaultsieve.analyzers.domains import analyze_domains, domain_exists, extract_domain
 from vaultsieve.audit import run_audit
 from vaultsieve.models import AuditOptions, Credential
 
@@ -18,6 +20,8 @@ def credential(id_: str, urls: tuple[str, ...]) -> Credential:
 def test_extract_domain_normalizes_urls() -> None:
     assert extract_domain("https://www.example.com/login") == "example.com"
     assert extract_domain("example.org/path") == "example.org"
+    assert extract_domain("androidapp://cat.bcn.smoubcn") == ""
+    assert extract_domain("iosapp://123456789") == ""
     assert extract_domain("") == ""
 
 
@@ -43,6 +47,21 @@ def test_analyze_domains_reports_missing_domain_once_for_affected_credentials() 
     assert findings[0].severity == "obsolete"
     assert findings[0].category == "domain_missing"
     assert findings[0].credential_ids == ("csv:0", "csv:1")
+
+
+def test_domain_exists_checks_www_variant_before_marking_missing(monkeypatch) -> None:
+    calls: list[str] = []
+
+    def getaddrinfo(domain: str, _port: object) -> object:
+        calls.append(domain)
+        if domain == "example.test":
+            raise socket.gaierror("not this host")
+        return object()
+
+    monkeypatch.setattr("socket.getaddrinfo", getaddrinfo)
+
+    assert domain_exists("example.test") is True
+    assert calls == ["example.test", "www.example.test"]
 
 
 def test_run_audit_can_check_domains_with_injected_lookup(tmp_path) -> None:

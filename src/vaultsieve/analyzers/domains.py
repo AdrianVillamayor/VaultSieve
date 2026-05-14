@@ -15,14 +15,25 @@ def extract_domain(url: str) -> str:
     candidate = url.strip()
     if not candidate:
         return ""
-    if "://" not in candidate:
+    has_scheme = "://" in candidate
+    if not has_scheme:
         candidate = f"https://{candidate}"
     parsed = urlparse(candidate)
+    if parsed.scheme not in {"http", "https"}:
+        return ""
     hostname = parsed.hostname or ""
     return hostname.lower().removeprefix("www.")
 
 
 def domain_exists(domain: str) -> bool:
+    candidates = (domain,) if domain.startswith("www.") else (domain, f"www.{domain}")
+    for candidate in candidates:
+        if _resolves(candidate):
+            return True
+    return False
+
+
+def _resolves(domain: str) -> bool:
     try:
         socket.getaddrinfo(domain, None)
     except socket.gaierror:

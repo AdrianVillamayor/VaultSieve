@@ -1,10 +1,19 @@
 from vaultsieve.analyzers.breaches import analyze_breaches, is_password_breached
-from vaultsieve.analyzers.duplicates import analyze_duplicates, duplicate_removal_ids
+from vaultsieve.analyzers.duplicates import (
+    analyze_duplicates,
+    duplicate_cleanup_plan,
+    duplicate_removal_ids,
+)
 from vaultsieve.analyzers.passwords import analyze_password_quality
 from vaultsieve.models import Credential
 
 
-def credential(id_: str, password: str, name: str = "Example") -> Credential:
+def credential(
+    id_: str,
+    password: str,
+    name: str = "Example",
+    raw: dict[str, object] | None = None,
+) -> Credential:
     return Credential(
         id=id_,
         source="csv",
@@ -13,20 +22,34 @@ def credential(id_: str, password: str, name: str = "Example") -> Credential:
         username="alice",
         password=password,
         urls=("https://example.com",),
+        raw=raw,
     )
 
 
 def test_duplicate_and_reuse_findings() -> None:
     credentials = (
-        credential("csv:0", "Secret123!"),
-        credential("csv:1", "Secret123!"),
+        credential("csv:0", "Secret123!", raw={"updated_at": "2024-01-01T00:00:00Z"}),
+        credential("csv:1", "Secret123!", raw={"updated_at": "2024-02-01T00:00:00Z"}),
         Credential("csv:2", "csv", 2, "Other", "bob", "Secret123!", ("https://other.test",)),
     )
 
     findings = analyze_duplicates(credentials)
 
     assert {finding.category for finding in findings} == {"duplicate", "reuse"}
-    assert duplicate_removal_ids(credentials) == {"csv:1"}
+    assert duplicate_removal_ids(credentials) == {"csv:0"}
+
+
+def test_duplicate_cleanup_plan_keeps_ambiguous_groups_for_review() -> None:
+    credentials = (
+        credential("csv:0", "Secret123!"),
+        credential("csv:1", "Secret123!"),
+    )
+
+    decisions = duplicate_cleanup_plan(credentials)
+
+    assert decisions[0].keep_id is None
+    assert decisions[0].remove_ids == ()
+    assert duplicate_removal_ids(credentials) == set()
 
 
 def test_password_quality_findings() -> None:

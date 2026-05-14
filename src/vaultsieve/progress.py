@@ -1,7 +1,18 @@
 from __future__ import annotations
 
+import re
+
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.progress import Progress, SpinnerColumn, Task, TextColumn, TimeElapsedColumn
+
+PROGRESS_COUNTER_RE = re.compile(r" \(\d+/\d+ unique (?:passwords|domains)\)$")
+
+
+class DoneAwareSpinnerColumn(SpinnerColumn):
+    def render(self, task: Task):  # type: ignore[no-untyped-def]
+        if task.fields.get("done"):
+            return "✓"
+        return super().render(task)
 
 
 class AuditProgress:
@@ -13,7 +24,7 @@ class AuditProgress:
 
     def __enter__(self) -> AuditProgress:
         self._progress = Progress(
-            SpinnerColumn(),
+            DoneAwareSpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             TimeElapsedColumn(),
             console=self.console,
@@ -21,7 +32,8 @@ class AuditProgress:
         self._progress.__enter__()
         return self
 
-    def __exit__(self, exc_type, exc, traceback) -> None:  # type: ignore[no-untyped-def]
+    # type: ignore[no-untyped-def]
+    def __exit__(self, exc_type, exc, traceback) -> None:
         if self._progress is not None:
             self._progress.__exit__(exc_type, exc, traceback)
 
@@ -29,8 +41,19 @@ class AuditProgress:
         detail = f"{completed} checked" if completed is not None else ""
         if self._progress is None:
             return
-        if phase != self._current_phase:
-            self._current_phase = phase
-            self._task_ids[phase] = self._progress.add_task(phase, total=None)
+        task_key = PROGRESS_COUNTER_RE.sub("", phase)
+        if task_key != self._current_phase:
+            if self._current_phase is not None:
+                previous_task_id = self._task_ids[self._current_phase]
+                self._progress.update(
+                    previous_task_id,
+                    description=f"{self._current_phase} done",
+                    done=True,
+                )
+                self._progress.stop_task(previous_task_id)
+            self._current_phase = task_key
+            self._task_ids[task_key] = self._progress.add_task(
+                phase, total=None)
         suffix = f" ({detail})" if detail else ""
-        self._progress.update(self._task_ids[phase], description=f"{phase}{suffix}")
+        self._progress.update(
+            self._task_ids[task_key], description=f"{phase}{suffix}")
