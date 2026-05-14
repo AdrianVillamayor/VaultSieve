@@ -7,6 +7,7 @@ from vaultsieve.analyzers.breaches import LookupFn, analyze_breaches
 from vaultsieve.analyzers.domains import DomainLookupFn, analyze_domains, extract_domain
 from vaultsieve.analyzers.duplicates import analyze_duplicates
 from vaultsieve.analyzers.passwords import analyze_password_quality
+from vaultsieve.analyzers.two_factor import TwoFactorLookupFn, analyze_two_factor
 from vaultsieve.importers.bitwarden import import_bitwarden
 from vaultsieve.importers.csv_generic import import_csv
 from vaultsieve.models import AuditOptions, AuditReport, Credential, Finding, InputFormat, SEVERITY_ORDER
@@ -29,6 +30,7 @@ def run_audit(
     *,
     breach_lookup: LookupFn | None = None,
     domain_lookup: DomainLookupFn | None = None,
+    two_factor_lookup: TwoFactorLookupFn | None = None,
     progress: ProgressCallback | None = None,
 ) -> AuditReport:
     audit_options = options or AuditOptions()
@@ -120,6 +122,14 @@ def run_audit(
                     audit_options.domain_workers,
                 )
             )
+
+    if audit_options.check_2fa:
+        if progress is not None:
+            progress("Checking 2FA availability", None)
+        if two_factor_lookup is None:
+            findings.extend(analyze_two_factor(credentials))
+        else:
+            findings.extend(analyze_two_factor(credentials, two_factor_lookup))
 
     if progress is not None:
         progress("Preparing report", None)

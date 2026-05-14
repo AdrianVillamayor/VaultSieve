@@ -31,6 +31,8 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("--no-check-breaches", action="store_false", dest="check_breaches")
     audit.add_argument("--check-domains", action="store_true", default=None)
     audit.add_argument("--no-check-domains", action="store_false", dest="check_domains")
+    audit.add_argument("--check-2fa", action="store_true", default=None)
+    audit.add_argument("--no-check-2fa", action="store_false", dest="check_2fa")
     audit.add_argument("--hibp-workers", type=int)
     audit.add_argument("--domain-workers", type=int)
     audit.add_argument("--min-password-length", type=int)
@@ -99,6 +101,7 @@ def _run_audit_command(args: argparse.Namespace) -> int:
     config = load_config()
     check_breaches = config.check_breaches if args.check_breaches is None else args.check_breaches
     check_domains = config.check_domains if args.check_domains is None else args.check_domains
+    check_2fa = config.check_2fa if args.check_2fa is None else args.check_2fa
     hibp_workers = args.hibp_workers or config.hibp_workers
     domain_workers = args.domain_workers or config.domain_workers
     min_password_length = args.min_password_length or config.min_password_length
@@ -109,6 +112,7 @@ def _run_audit_command(args: argparse.Namespace) -> int:
             AuditOptions(
                 check_breaches=check_breaches,
                 check_domains=check_domains,
+                check_2fa=check_2fa,
                 hibp_workers=hibp_workers,
                 domain_workers=domain_workers,
                 min_password_length=min_password_length,

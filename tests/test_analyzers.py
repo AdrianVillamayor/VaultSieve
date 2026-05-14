@@ -5,6 +5,7 @@ from vaultsieve.analyzers.duplicates import (
     duplicate_removal_ids,
 )
 from vaultsieve.analyzers.passwords import analyze_password_quality
+from vaultsieve.analyzers.two_factor import analyze_two_factor
 from vaultsieve.models import Credential
 
 
@@ -69,8 +70,8 @@ def test_password_quality_findings() -> None:
 
 def test_password_quality_skips_passkey_without_password_and_ssh_key() -> None:
     credentials = (
-        Credential("csv:0", "csv", 0, "Passkey", "alice", "", (), True, False),
-        Credential("csv:1", "csv", 1, "SSH", "", "", (), False, True),
+        Credential("csv:0", "csv", 0, "Passkey", "alice", "", (), True, False, False),
+        Credential("csv:1", "csv", 1, "SSH", "", "", (), False, False, True),
     )
 
     assert analyze_password_quality(credentials) == ()
@@ -132,6 +133,27 @@ def test_analyze_breaches_reports_lookup_failures() -> None:
 
 
 def test_analyze_breaches_skips_ssh_keys() -> None:
-    credentials = (Credential("csv:0", "csv", 0, "SSH", "", "password", (), False, True),)
+    credentials = (Credential("csv:0", "csv", 0, "SSH", "", "password", (), False, False, True),)
 
     assert analyze_breaches(credentials, lambda _prefix: "bad") == ()
+
+
+def test_analyze_two_factor_reports_totp_capable_service_without_stored_totp() -> None:
+    findings = analyze_two_factor(
+        (credential("csv:0", "Secret123!"),),
+        lambda: {"example.com": {"documentation": "https://example.com/2fa"}},
+    )
+
+    assert len(findings) == 1
+    assert findings[0].category == "two_factor_not_stored"
+    assert "https://example.com/2fa" in findings[0].recommendation
+
+
+def test_analyze_two_factor_skips_totp_passkey_and_ssh_entries() -> None:
+    credentials = (
+        Credential("csv:0", "csv", 0, "TOTP", "alice", "Secret123!", ("https://example.com",), False, True, False),
+        Credential("csv:1", "csv", 1, "Passkey", "alice", "", ("https://example.com",), True, False, False),
+        Credential("csv:2", "csv", 2, "SSH", "", "", ("https://example.com",), False, False, True),
+    )
+
+    assert analyze_two_factor(credentials, lambda: {"example.com": {}}) == ()

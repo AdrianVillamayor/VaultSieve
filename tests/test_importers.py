@@ -48,6 +48,7 @@ def test_import_bitwarden_marks_passkeys_and_ssh_keys(tmp_path) -> None:
                         "login": {
                             "username": "alice",
                             "fido2Credentials": [{"credentialId": "abc"}],
+                            "totp": "otpauth://totp/example",
                         },
                     },
                     {
@@ -64,6 +65,7 @@ def test_import_bitwarden_marks_passkeys_and_ssh_keys(tmp_path) -> None:
     credentials = import_bitwarden(path)
 
     assert credentials[0].has_passkey is True
+    assert credentials[0].has_totp is True
     assert credentials[0].is_ssh_key is False
     assert credentials[1].is_ssh_key is True
 

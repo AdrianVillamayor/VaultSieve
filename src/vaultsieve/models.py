@@ -13,6 +13,7 @@ FindingCategory = Literal[
     "similar",
     "breached",
     "domain_missing",
+    "two_factor_not_stored",
     "input_issue",
 ]
 InputFormat = Literal["bitwarden", "csv"]
@@ -36,6 +37,7 @@ class Credential:
     password: str
     urls: tuple[str, ...] = ()
     has_passkey: bool = False
+    has_totp: bool = False
     is_ssh_key: bool = False
     raw: dict[str, Any] | None = None
 
@@ -48,6 +50,7 @@ class Credential:
             "username": self.username,
             "urls": list(self.urls),
             "has_passkey": self.has_passkey,
+            "has_totp": self.has_totp,
             "is_ssh_key": self.is_ssh_key,
         }
 
@@ -74,6 +77,7 @@ class Finding:
 class AuditOptions:
     check_breaches: bool = False
     check_domains: bool = False
+    check_2fa: bool = False
     hibp_workers: int = 4
     domain_workers: int = 16
     min_password_length: int = 12

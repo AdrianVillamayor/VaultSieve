@@ -25,6 +25,11 @@ def has_passkey(item: dict[str, Any]) -> bool:
     return bool(login.get("fido2Credentials"))
 
 
+def has_totp(item: dict[str, Any]) -> bool:
+    login = item.get("login") or {}
+    return bool(str(login.get("totp") or "").strip())
+
+
 def is_ssh_key(item: dict[str, Any]) -> bool:
     return item.get("type") == 5 or bool(item.get("sshKey"))
 
@@ -59,6 +64,7 @@ def import_bitwarden(path: Path) -> tuple[Credential, ...]:
                 password=str(login.get("password") or ""),
                 urls=extract_uris(item),
                 has_passkey=has_passkey(item),
+                has_totp=has_totp(item),
                 is_ssh_key=is_ssh_key(item),
                 raw=item,
             )

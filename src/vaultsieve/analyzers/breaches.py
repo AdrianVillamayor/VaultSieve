@@ -14,7 +14,7 @@ ProgressFn = Callable[[str], None]
 def hibp_lookup(prefix: str) -> str:
     request = urllib.request.Request(
         f"https://api.pwnedpasswords.com/range/{prefix}",
-        headers={"User-Agent": "VaultSieve"},
+        headers={"User-Agent": "VaultSieve", "Add-Padding": "true"},
     )
     with urllib.request.urlopen(request, timeout=10) as response:  # nosec: opt-in API call
         return response.read().decode("utf-8")
@@ -26,7 +26,10 @@ def is_password_breached(password: str, lookup: LookupFn = hibp_lookup) -> bool:
     suffix = digest[5:]
     response_text = lookup(prefix)
     for line in response_text.splitlines():
-        returned_suffix = line.split(":", 1)[0].strip().upper()
+        returned_suffix, _, count = line.partition(":")
+        if count.strip() == "0":
+            continue
+        returned_suffix = returned_suffix.strip().upper()
         if returned_suffix == suffix:
             return True
     return False

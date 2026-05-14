@@ -65,6 +65,13 @@ def test_html_report_has_dashboard_filters_and_escapes_content(tmp_path) -> None
                 explanation="Password appears in breach data.",
                 recommendation="Change it immediately.",
             ),
+            Finding(
+                severity="medium",
+                category="two_factor_not_stored",
+                credential_ids=("bitwarden:0",),
+                explanation="This service supports TOTP-based 2FA, but this vault entry does not include a stored TOTP secret.",
+                recommendation="Confirm 2FA is enabled for this account.",
+            ),
         ),
     )
 
@@ -79,6 +86,11 @@ def test_html_report_has_dashboard_filters_and_escapes_content(tmp_path) -> None
     assert "rel=\"icon\"" in html
     assert "VaultSieve" in html
     assert "class=\"brand-icon\"" in html
+    assert "What to do first" in html
+    assert "What VaultSieve understood" in html
+    assert "Health score" in html
+    assert "Change 1 breached password entries first." in html
+    assert "2FA Directory" in html
     assert "data-severity=\"critical\"" in html
     assert "Password vault audit" in html
     assert "never-render-this" not in html
@@ -116,6 +128,24 @@ def test_csv_clean_output_removes_exact_duplicates(tmp_path) -> None:
         rows = list(csv.DictReader(file))
     assert removed == 1
     assert len(rows) == 1
+
+
+def test_run_audit_can_check_2fa_with_injected_lookup(tmp_path) -> None:
+    input_path = tmp_path / "passwords.csv"
+    input_path.write_text(
+        "name,url,username,password\n"
+        "Example,https://example.com,alice,Secret123!\n",
+        encoding="utf-8",
+    )
+
+    report = run_audit(
+        input_path,
+        "csv",
+        AuditOptions(check_2fa=True),
+        two_factor_lookup=lambda: {"example.com": {}},
+    )
+
+    assert any(finding.category == "two_factor_not_stored" for finding in report.findings)
 
 
 def test_csv_clean_output_can_remove_obsolete_entries(tmp_path) -> None:

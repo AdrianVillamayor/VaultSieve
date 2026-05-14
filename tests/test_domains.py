@@ -76,6 +76,7 @@ def test_analyze_domains_skips_ssh_keys() -> None:
                 "",
                 ("https://missing.test",),
                 False,
+                False,
                 True,
             ),
         ),

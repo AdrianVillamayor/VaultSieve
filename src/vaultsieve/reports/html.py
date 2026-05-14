@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from html import escape
 
+from vaultsieve.analyzers.duplicates import duplicate_cleanup_plan
+from vaultsieve.analyzers.domains import extract_domain
 from vaultsieve.models import AuditReport, Finding, SEVERITY_ORDER
 
 SEVERITY_LABELS = ("critical", "high", "medium", "low", "obsolete")
@@ -15,7 +17,10 @@ def render_html_report(
 ) -> str:
     findings = sorted(
         report.findings, key=lambda finding: SEVERITY_ORDER[finding.severity])
-    generated_summary = _render_summary(report)
+    dashboard = _dashboard_metrics(report)
+    generated_summary = _render_summary(report, dashboard)
+    action_plan = _render_action_plan(report, dashboard)
+    inventory = _render_inventory(dashboard)
     filters = _render_filters(findings)
     finding_cards = _render_finding_cards(report, findings)
     return f"""<!doctype html>
@@ -49,8 +54,13 @@ def render_html_report(
 
     {generated_summary}
 
+    {action_plan}
+
+    {inventory}
+
     <section class="notice">
       <strong>Safety note:</strong> This report contains account names, usernames, URLs, source indexes, and findings. Treat it as sensitive even though plaintext passwords are excluded.
+      {_render_attribution(report)}
     </section>
 
     {filters}
@@ -69,22 +79,66 @@ def render_html_report(
 """
 
 
-def _render_summary(report: AuditReport) -> str:
+def _dashboard_metrics(report: AuditReport) -> dict[str, int]:
+    category_counts: dict[str, int] = {}
+    for finding in report.findings:
+        category_counts[finding.category] = category_counts.get(finding.category, 0) + 1
+
+    cleanup_plan = duplicate_cleanup_plan(report.credentials)
+    safe_duplicate_removals = sum(len(decision.remove_ids) for decision in cleanup_plan)
+    ambiguous_duplicate_groups = sum(1 for decision in cleanup_plan if not decision.remove_ids)
+    web_entries = sum(1 for credential in report.credentials if any(extract_domain(url) for url in credential.urls))
+    app_entries = sum(
+        1
+        for credential in report.credentials
+        if credential.urls and not any(extract_domain(url) for url in credential.urls)
+    )
+    passkeys = sum(1 for credential in report.credentials if credential.has_passkey)
+    ssh_keys = sum(1 for credential in report.credentials if credential.is_ssh_key)
+    highest_risk = category_counts.get("breached", 0) + category_counts.get("empty", 0)
+    needs_review = (
+        category_counts.get("reuse", 0)
+        + category_counts.get("domain_missing", 0)
+        + category_counts.get("two_factor_not_stored", 0)
+        + ambiguous_duplicate_groups
+    )
+    health_score = max(
+        0,
+        100
+        - report.summary_by_severity["critical"] * 25
+        - report.summary_by_severity["high"] * 12
+        - report.summary_by_severity["medium"] * 6
+        - report.summary_by_severity["low"] * 2
+        - report.summary_by_severity["obsolete"] * 3,
+    )
+    return {
+        "health_score": health_score,
+        "safe_duplicate_removals": safe_duplicate_removals,
+        "ambiguous_duplicate_groups": ambiguous_duplicate_groups,
+        "highest_risk": highest_risk,
+        "needs_review": needs_review,
+        "web_entries": web_entries,
+        "app_entries": app_entries,
+        "passkeys": passkeys,
+        "ssh_keys": ssh_keys,
+        "breached": category_counts.get("breached", 0),
+        "empty": category_counts.get("empty", 0),
+        "reuse": category_counts.get("reuse", 0),
+        "domain_missing": category_counts.get("domain_missing", 0),
+        "two_factor_not_stored": category_counts.get("two_factor_not_stored", 0),
+        "weak": category_counts.get("weak", 0),
+    }
+
+
+def _render_summary(report: AuditReport, dashboard: dict[str, int]) -> str:
     cards = [
-        _summary_card("Credentials", str(
-            len(report.credentials)), "Entries imported"),
-        _summary_card("Findings", str(len(report.findings)),
-                      "Total issues detected"),
+        _summary_card("Health score", str(dashboard["health_score"]), "0-100 action score"),
+        _summary_card("Safe cleanup", str(dashboard["safe_duplicate_removals"]), "Low-risk duplicate removals"),
+        _summary_card("Needs review", str(dashboard["needs_review"]), "Manual decisions"),
+        _summary_card("Highest risk", str(dashboard["highest_risk"]), "Breached or empty passwords", "critical"),
+        _summary_card("Credentials", str(len(report.credentials)), "Entries imported"),
+        _summary_card("Findings", str(len(report.findings)), "Total issues detected"),
     ]
-    for severity in SEVERITY_LABELS:
-        cards.append(
-            _summary_card(
-                severity.title(),
-                str(report.summary_by_severity[severity]),
-                "Severity count",
-                severity,
-            )
-        )
     return f"<section class=\"summary-grid\">{''.join(cards)}</section>"
 
 
@@ -97,6 +151,65 @@ def _summary_card(title: str, value: str, subtitle: str, severity: str | None = 
         f"<small>{escape(subtitle)}</small>"
         "</article>"
     )
+
+
+def _render_action_plan(report: AuditReport, dashboard: dict[str, int]) -> str:
+    actions: list[str] = []
+    if dashboard["breached"]:
+        actions.append(f"Change {dashboard['breached']} breached password entries first.")
+    if dashboard["empty"]:
+        actions.append(f"Fix {dashboard['empty']} empty password entries.")
+    if dashboard["reuse"]:
+        actions.append(f"Review {dashboard['reuse']} password reuse groups and rotate reused passwords.")
+    if dashboard["safe_duplicate_removals"]:
+        actions.append(f"Create a clean output to remove {dashboard['safe_duplicate_removals']} safe exact duplicates.")
+    if dashboard["domain_missing"]:
+        actions.append(f"Review {dashboard['domain_missing']} missing-domain groups before deleting obsolete entries.")
+    if dashboard["two_factor_not_stored"]:
+        actions.append(f"Confirm 2FA on {dashboard['two_factor_not_stored']} TOTP-capable services not stored in this vault.")
+    if dashboard["weak"]:
+        actions.append(f"Replace weak passwords after critical and reuse issues are handled.")
+    if not actions:
+        actions.append("No immediate action required from the current checks.")
+    items = "".join(f"<li>{escape(action)}</li>" for action in actions)
+    return f"""
+    <section class="action-panel">
+      <div>
+        <p class="section-kicker">Recommended next steps</p>
+        <h2>What to do first</h2>
+      </div>
+      <ol>{items}</ol>
+    </section>
+    """
+
+
+def _render_inventory(dashboard: dict[str, int]) -> str:
+    items = [
+        ("Web entries", dashboard["web_entries"], "Checked for resolvable domains when enabled"),
+        ("App entries", dashboard["app_entries"], "Skipped from web domain checks"),
+        ("Passkeys", dashboard["passkeys"], "Skipped from empty-password warnings"),
+        ("SSH keys", dashboard["ssh_keys"], "Skipped from web password/domain checks"),
+        ("Ambiguous duplicates", dashboard["ambiguous_duplicate_groups"], "Kept because no clear keeper exists"),
+    ]
+    cards = "".join(
+        _summary_card(title, str(value), subtitle)
+        for title, value, subtitle in items
+    )
+    return f"""
+    <section class="inventory-panel">
+      <div>
+        <p class="section-kicker">Inventory</p>
+        <h2>What VaultSieve understood</h2>
+      </div>
+      <div class="inventory-grid">{cards}</div>
+    </section>
+    """
+
+
+def _render_attribution(report: AuditReport) -> str:
+    if any(finding.category == "two_factor_not_stored" for finding in report.findings):
+        return " Data sourced from <a href=\"https://2fa.directory/\">2FA Directory</a> by <a href=\"https://github.com/2factorauth/\">2factorauth</a>."
+    return ""
 
 
 def _render_filters(findings: list[Finding]) -> str:
@@ -260,8 +373,16 @@ body {
 .summary-card.severity-medium strong { color: var(--medium); }
 .summary-card.severity-low strong { color: var(--low); }
 .summary-card.severity-obsolete strong { color: var(--obsolete); }
+.action-panel, .inventory-panel { display: grid; grid-template-columns: minmax(220px, 0.55fr) 1.45fr; gap: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, 0.94); padding: 1rem; margin: 1rem 0; }
+.section-kicker { margin: 0 0 0.3rem; color: var(--accent); font-size: 0.75rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
+.action-panel h2, .inventory-panel h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.04em; }
+.action-panel ol { margin: 0; padding-left: 1.35rem; display: grid; gap: 0.52rem; color: #344054; line-height: 1.55; }
+.action-panel li::marker { color: var(--accent); font-weight: 800; }
+.inventory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.7rem; }
+.inventory-grid .summary-card { min-height: 104px; background: #fbfcfc; }
 .notice { border-radius: var(--radius); padding: 0.82rem 1rem; background: #f8fafc; color: #475467; line-height: 1.55; }
 .notice strong { color: var(--ink); }
+.notice a { color: var(--accent); font-weight: 650; }
 .filters { margin: 1rem 0 0; padding: 0.8rem; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.65rem; align-items: end; background: rgba(255, 255, 255, 0.92); position: sticky; top: 0.75rem; z-index: 5; border-radius: var(--radius); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08); backdrop-filter: blur(10px); }
 label { color: var(--muted); display: grid; gap: 0.35rem; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.02em; }
 input, select, button { width: 100%; border: 1px solid var(--line-strong); border-radius: 0.7rem; background: var(--panel); color: var(--ink); padding: 0.68rem 0.75rem; font: inherit; }
@@ -309,7 +430,7 @@ code { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, C
 .empty-state { border-radius: var(--radius); padding: 2rem; text-align: center; color: var(--muted); }
 .is-hidden { display: none; }
 @media (max-width: 900px) {
-  .hero, .finding-body { grid-template-columns: 1fr; }
+  .hero, .finding-body, .action-panel, .inventory-panel { grid-template-columns: 1fr; }
   .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .filters { grid-template-columns: 1fr; position: static; }
   .findings { max-height: none; overflow: visible; padding-right: 0; }
