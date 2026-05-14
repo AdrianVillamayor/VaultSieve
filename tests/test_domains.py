@@ -64,6 +64,27 @@ def test_domain_exists_checks_www_variant_before_marking_missing(monkeypatch) ->
     assert calls == ["example.test", "www.example.test"]
 
 
+def test_analyze_domains_skips_ssh_keys() -> None:
+    findings = analyze_domains(
+        (
+            Credential(
+                "csv:0",
+                "csv",
+                0,
+                "SSH",
+                "",
+                "",
+                ("https://missing.test",),
+                False,
+                True,
+            ),
+        ),
+        lambda _domain: False,
+    )
+
+    assert findings == ()
+
+
 def test_run_audit_can_check_domains_with_injected_lookup(tmp_path) -> None:
     input_path = tmp_path / "passwords.csv"
     input_path.write_text(

@@ -20,6 +20,15 @@ def extract_uris(item: dict[str, Any]) -> tuple[str, ...]:
     return tuple(sorted(result))
 
 
+def has_passkey(item: dict[str, Any]) -> bool:
+    login = item.get("login") or {}
+    return bool(login.get("fido2Credentials"))
+
+
+def is_ssh_key(item: dict[str, Any]) -> bool:
+    return item.get("type") == 5 or bool(item.get("sshKey"))
+
+
 def import_bitwarden(path: Path) -> tuple[Credential, ...]:
     try:
         with path.open("r", encoding="utf-8") as file:
@@ -37,7 +46,7 @@ def import_bitwarden(path: Path) -> tuple[Credential, ...]:
 
     credentials: list[Credential] = []
     for index, item in enumerate(items):
-        if not isinstance(item, dict) or item.get("type") != 1:
+        if not isinstance(item, dict) or item.get("type") not in {1, 5}:
             continue
         login = item.get("login") or {}
         credentials.append(
@@ -49,6 +58,8 @@ def import_bitwarden(path: Path) -> tuple[Credential, ...]:
                 username=str(login.get("username") or ""),
                 password=str(login.get("password") or ""),
                 urls=extract_uris(item),
+                has_passkey=has_passkey(item),
+                is_ssh_key=is_ssh_key(item),
                 raw=item,
             )
         )

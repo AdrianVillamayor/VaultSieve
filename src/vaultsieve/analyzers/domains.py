@@ -49,6 +49,8 @@ def analyze_domains(
 ) -> tuple[Finding, ...]:
     credentials_by_domain: dict[str, list[Credential]] = {}
     for credential in credentials:
+        if credential.is_ssh_key:
+            continue
         for url in credential.urls:
             domain = extract_domain(url)
             if domain:

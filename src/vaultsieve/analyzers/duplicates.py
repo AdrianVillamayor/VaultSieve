@@ -21,6 +21,8 @@ def duplicate_key(credential: Credential) -> tuple[str, str, str, tuple[str, ...
         normalize(credential.username),
         credential.password,
         tuple(sorted(normalize(url) for url in credential.urls if normalize(url))),
+        str(credential.has_passkey),
+        str(credential.is_ssh_key),
     )
 
 

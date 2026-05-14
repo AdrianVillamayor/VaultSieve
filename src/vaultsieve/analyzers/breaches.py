@@ -41,6 +41,8 @@ def analyze_breaches(
     findings: list[Finding] = []
     credentials_by_password: dict[str, list[Credential]] = {}
     for credential in credentials:
+        if credential.is_ssh_key:
+            continue
         if credential.password:
             credentials_by_password.setdefault(credential.password, []).append(credential)
 

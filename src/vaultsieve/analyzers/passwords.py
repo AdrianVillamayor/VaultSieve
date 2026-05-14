@@ -30,8 +30,12 @@ def analyze_password_quality(
 ) -> tuple[Finding, ...]:
     findings: list[Finding] = []
     for credential in credentials:
+        if credential.is_ssh_key:
+            continue
         password = credential.password
         if not password:
+            if credential.has_passkey:
+                continue
             findings.append(
                 Finding(
                     severity="critical",

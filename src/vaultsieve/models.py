@@ -35,6 +35,8 @@ class Credential:
     username: str
     password: str
     urls: tuple[str, ...] = ()
+    has_passkey: bool = False
+    is_ssh_key: bool = False
     raw: dict[str, Any] | None = None
 
     def safe_reference(self) -> dict[str, Any]:
@@ -45,6 +47,8 @@ class Credential:
             "name": self.name,
             "username": self.username,
             "urls": list(self.urls),
+            "has_passkey": self.has_passkey,
+            "is_ssh_key": self.is_ssh_key,
         }
 
 

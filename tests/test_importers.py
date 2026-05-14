@@ -36,6 +36,38 @@ def test_import_bitwarden_login_items(tmp_path) -> None:
     assert credentials[0].urls == ("https://example.com",)
 
 
+def test_import_bitwarden_marks_passkeys_and_ssh_keys(tmp_path) -> None:
+    path = tmp_path / "export.json"
+    path.write_text(
+        json.dumps(
+            {
+                "items": [
+                    {
+                        "type": 1,
+                        "name": "Passkey",
+                        "login": {
+                            "username": "alice",
+                            "fido2Credentials": [{"credentialId": "abc"}],
+                        },
+                    },
+                    {
+                        "type": 5,
+                        "name": "Server key",
+                        "sshKey": {"privateKey": "secret"},
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    credentials = import_bitwarden(path)
+
+    assert credentials[0].has_passkey is True
+    assert credentials[0].is_ssh_key is False
+    assert credentials[1].is_ssh_key is True
+
+
 def test_import_csv_requires_columns(tmp_path) -> None:
     path = tmp_path / "bad.csv"
     path.write_text("name,url,username\nExample,https://example.com,alice\n", encoding="utf-8")

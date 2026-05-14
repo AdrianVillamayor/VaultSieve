@@ -67,6 +67,15 @@ def test_password_quality_findings() -> None:
     assert "similar" in categories
 
 
+def test_password_quality_skips_passkey_without_password_and_ssh_key() -> None:
+    credentials = (
+        Credential("csv:0", "csv", 0, "Passkey", "alice", "", (), True, False),
+        Credential("csv:1", "csv", 1, "SSH", "", "", (), False, True),
+    )
+
+    assert analyze_password_quality(credentials) == ()
+
+
 def test_breach_lookup_uses_prefix_only() -> None:
     seen_prefixes: list[str] = []
 
@@ -120,3 +129,9 @@ def test_analyze_breaches_reports_lookup_failures() -> None:
 
     assert len(findings) == 1
     assert findings[0].category == "input_issue"
+
+
+def test_analyze_breaches_skips_ssh_keys() -> None:
+    credentials = (Credential("csv:0", "csv", 0, "SSH", "", "password", (), False, True),)
+
+    assert analyze_breaches(credentials, lambda _prefix: "bad") == ()
