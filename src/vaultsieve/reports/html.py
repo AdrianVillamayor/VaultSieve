@@ -19,6 +19,7 @@ def render_html_report(
         report.findings, key=lambda finding: SEVERITY_ORDER[finding.severity])
     dashboard = _dashboard_metrics(report)
     generated_summary = _render_summary(report, dashboard)
+    score_panel = _render_score_panel(report, dashboard)
     action_plan = _render_action_plan(report, dashboard)
     inventory = _render_inventory(dashboard)
     filters = _render_filters(findings)
@@ -52,16 +53,11 @@ def render_html_report(
       </div>
     </header>
 
-    {generated_summary}
-
-    {action_plan}
-
     {inventory}
 
-    <section class="notice">
-      <strong>Safety note:</strong> This report contains account names, usernames, URLs, source indexes, and findings. Treat it as sensitive even though plaintext passwords are excluded.
-      {_render_attribution(report)}
-    </section>
+    {score_panel}
+
+    {generated_summary}
 
     {filters}
 
@@ -71,6 +67,13 @@ def render_html_report(
 
     <section class="findings" id="findings">
       {finding_cards}
+    </section>
+
+    {action_plan}
+
+    <section class="notice">
+      <strong>Safety note:</strong> This report contains account names, usernames, URLs, source indexes, and findings. Treat it as sensitive even though plaintext passwords are excluded.
+      {_render_attribution(report)}
     </section>
   </main>
   <script>{_render_script()}</script>
@@ -100,17 +103,18 @@ def _dashboard_metrics(report: AuditReport) -> dict[str, int]:
         category_counts.get("reuse", 0)
         + category_counts.get("domain_missing", 0)
         + category_counts.get("two_factor_not_stored", 0)
+        + category_counts.get("service_known_breach", 0)
         + ambiguous_duplicate_groups
     )
-    health_score = max(
-        0,
-        100
-        - report.summary_by_severity["critical"] * 25
-        - report.summary_by_severity["high"] * 12
-        - report.summary_by_severity["medium"] * 6
-        - report.summary_by_severity["low"] * 2
-        - report.summary_by_severity["obsolete"] * 3,
+    severity_counts = report.summary_by_severity
+    penalty = (
+        min(45, severity_counts["critical"] * 10)
+        + min(25, severity_counts["high"] * 5)
+        + min(15, severity_counts["medium"] * 2)
+        + min(8, severity_counts["low"])
+        + min(7, severity_counts["obsolete"])
     )
+    health_score = 100 if not report.findings else max(5, 100 - penalty)
     return {
         "health_score": health_score,
         "safe_duplicate_removals": safe_duplicate_removals,
@@ -126,6 +130,7 @@ def _dashboard_metrics(report: AuditReport) -> dict[str, int]:
         "reuse": category_counts.get("reuse", 0),
         "domain_missing": category_counts.get("domain_missing", 0),
         "two_factor_not_stored": category_counts.get("two_factor_not_stored", 0),
+        "service_known_breach": category_counts.get("service_known_breach", 0),
         "weak": category_counts.get("weak", 0),
     }
 
@@ -140,6 +145,42 @@ def _render_summary(report: AuditReport, dashboard: dict[str, int]) -> str:
         _summary_card("Findings", str(len(report.findings)), "Total issues detected"),
     ]
     return f"<section class=\"summary-grid\">{''.join(cards)}</section>"
+
+
+def _render_score_panel(report: AuditReport, dashboard: dict[str, int]) -> str:
+    chart = _render_severity_chart(report)
+    return f"""
+    <section class="score-panel">
+      <div class="score-orb" style="--score: {dashboard['health_score']};">
+        <strong>{dashboard['health_score']}</strong>
+        <span>health score</span>
+      </div>
+      <div class="score-copy">
+        <p class="section-kicker">Summary chart</p>
+        <h2>Risk at a glance</h2>
+        <p>The health score starts at 100 and subtracts capped penalties by severity: critical findings have the strongest impact, then high, medium, low, and obsolete. Penalties are capped so large vaults do not collapse to 0 just because many similar findings repeat.</p>
+        {chart}
+      </div>
+    </section>
+    """
+
+
+def _render_severity_chart(report: AuditReport) -> str:
+    max_count = max(report.summary_by_severity.values(), default=0) or 1
+    rows = []
+    for severity in SEVERITY_LABELS:
+        count = report.summary_by_severity[severity]
+        width = max(4, round((count / max_count) * 100)) if count else 0
+        rows.append(
+            f"""
+            <div class="chart-row severity-{escape(severity)}">
+              <span>{escape(severity.title())}</span>
+              <div class="chart-track"><i style="width: {width}%"></i></div>
+              <strong>{count}</strong>
+            </div>
+            """
+        )
+    return f"<div class=\"severity-chart\">{''.join(rows)}</div>"
 
 
 def _summary_card(title: str, value: str, subtitle: str, severity: str | None = None) -> str:
@@ -167,6 +208,8 @@ def _render_action_plan(report: AuditReport, dashboard: dict[str, int]) -> str:
         actions.append(f"Review {dashboard['domain_missing']} missing-domain groups before deleting obsolete entries.")
     if dashboard["two_factor_not_stored"]:
         actions.append(f"Confirm 2FA on {dashboard['two_factor_not_stored']} TOTP-capable services not stored in this vault.")
+    if dashboard["service_known_breach"]:
+        actions.append(f"Review {dashboard['service_known_breach']} services with public breach history.")
     if dashboard["weak"]:
         actions.append(f"Replace weak passwords after critical and reuse issues are handled.")
     if not actions:
@@ -207,9 +250,12 @@ def _render_inventory(dashboard: dict[str, int]) -> str:
 
 
 def _render_attribution(report: AuditReport) -> str:
+    parts: list[str] = []
     if any(finding.category == "two_factor_not_stored" for finding in report.findings):
-        return " Data sourced from <a href=\"https://2fa.directory/\">2FA Directory</a> by <a href=\"https://github.com/2factorauth/\">2factorauth</a>."
-    return ""
+        parts.append("Data sourced from <a href=\"https://2fa.directory/\">2FA Directory</a> by <a href=\"https://github.com/2factorauth/\">2factorauth</a>.")
+    if any(finding.category == "service_known_breach" for finding in report.findings):
+        parts.append("Breach catalogue data sourced from <a href=\"https://haveibeenpwned.com/\">Have I Been Pwned</a>.")
+    return " " + " ".join(parts) if parts else ""
 
 
 def _render_filters(findings: list[Finding]) -> str:
@@ -373,14 +419,34 @@ body {
 .summary-card.severity-medium strong { color: var(--medium); }
 .summary-card.severity-low strong { color: var(--low); }
 .summary-card.severity-obsolete strong { color: var(--obsolete); }
-.action-panel, .inventory-panel { display: grid; grid-template-columns: minmax(220px, 0.55fr) 1.45fr; gap: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, 0.94); padding: 1rem; margin: 1rem 0; }
+.action-panel, .inventory-panel, .score-panel { display: grid; grid-template-columns: minmax(220px, 0.55fr) 1.45fr; gap: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, 0.94); padding: 1rem; margin: 1rem 0; }
 .section-kicker { margin: 0 0 0.3rem; color: var(--accent); font-size: 0.75rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
-.action-panel h2, .inventory-panel h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.04em; }
-.action-panel ol { margin: 0; padding-left: 1.35rem; display: grid; gap: 0.52rem; color: #344054; line-height: 1.55; }
+.action-panel { margin-top: 1.25rem; background: #fbfcfc; }
+.action-panel h2, .inventory-panel h2, .score-panel h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.04em; }
+.action-panel h2 { font-size: 1.05rem; }
+.action-panel .section-kicker { font-size: 0.68rem; }
+.action-panel ol { margin: 0; padding-left: 1.15rem; display: grid; gap: 0.36rem; color: #344054; line-height: 1.45; font-size: 0.9rem; }
 .action-panel li::marker { color: var(--accent); font-weight: 800; }
 .inventory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.7rem; }
 .inventory-grid .summary-card { min-height: 104px; background: #fbfcfc; }
-.notice { border-radius: var(--radius); padding: 0.82rem 1rem; background: #f8fafc; color: #475467; line-height: 1.55; }
+.score-panel { grid-template-columns: minmax(160px, 220px) 1fr; align-items: center; }
+.score-orb { width: 9.2rem; height: 9.2rem; border-radius: 999px; display: grid; place-items: center; align-content: center; justify-self: center; background: conic-gradient(var(--accent) calc(var(--score) * 1%), #e8eef0 0); position: relative; color: var(--ink); }
+.score-orb::after { content: ""; position: absolute; inset: 0.7rem; border-radius: inherit; background: white; border: 1px solid var(--line); }
+.score-orb strong, .score-orb span { position: relative; z-index: 1; }
+.score-orb strong { font-size: 2.4rem; line-height: 1; letter-spacing: -0.07em; }
+.score-orb span { color: var(--muted); font-size: 0.72rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.04em; }
+.score-copy p { color: #475467; line-height: 1.55; margin: 0.45rem 0 0.9rem; max-width: 60rem; }
+.severity-chart { display: grid; gap: 0.5rem; }
+.chart-row { display: grid; grid-template-columns: 5.4rem minmax(80px, 1fr) 2.3rem; gap: 0.65rem; align-items: center; font-size: 0.82rem; color: var(--muted); }
+.chart-row > span { font-weight: 700; }
+.chart-row > strong { color: var(--ink); text-align: right; }
+.chart-track { height: 0.55rem; border-radius: 999px; background: #eef2f4; overflow: hidden; }
+.chart-track i { display: block; height: 100%; border-radius: inherit; background: var(--obsolete); }
+.chart-row.severity-critical .chart-track i { background: var(--critical); }
+.chart-row.severity-high .chart-track i { background: var(--high); }
+.chart-row.severity-medium .chart-track i { background: var(--medium); }
+.chart-row.severity-low .chart-track i { background: var(--low); }
+.notice { border-radius: 0.8rem; padding: 0.55rem 0.7rem; background: transparent; color: var(--muted); line-height: 1.45; font-size: 0.78rem; margin-top: 0.85rem; }
 .notice strong { color: var(--ink); }
 .notice a { color: var(--accent); font-weight: 650; }
 .filters { margin: 1rem 0 0; padding: 0.8rem; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.65rem; align-items: end; background: rgba(255, 255, 255, 0.92); position: sticky; top: 0.75rem; z-index: 5; border-radius: var(--radius); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08); backdrop-filter: blur(10px); }
@@ -430,7 +496,7 @@ code { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, C
 .empty-state { border-radius: var(--radius); padding: 2rem; text-align: center; color: var(--muted); }
 .is-hidden { display: none; }
 @media (max-width: 900px) {
-  .hero, .finding-body, .action-panel, .inventory-panel { grid-template-columns: 1fr; }
+  .hero, .finding-body, .action-panel, .inventory-panel, .score-panel { grid-template-columns: 1fr; }
   .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .filters { grid-template-columns: 1fr; position: static; }
   .findings { max-height: none; overflow: visible; padding-right: 0; }

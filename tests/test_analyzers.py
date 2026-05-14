@@ -4,6 +4,7 @@ from vaultsieve.analyzers.duplicates import (
     duplicate_cleanup_plan,
     duplicate_removal_ids,
 )
+from vaultsieve.analyzers.known_breaches import analyze_known_breaches
 from vaultsieve.analyzers.passwords import analyze_password_quality
 from vaultsieve.analyzers.two_factor import analyze_two_factor
 from vaultsieve.models import Credential
@@ -157,3 +158,27 @@ def test_analyze_two_factor_skips_totp_passkey_and_ssh_entries() -> None:
     )
 
     assert analyze_two_factor(credentials, lambda: {"example.com": {}}) == ()
+
+
+def test_analyze_known_breaches_reports_public_breach_history() -> None:
+    findings = analyze_known_breaches(
+        (credential("csv:0", "Secret123!"),),
+        lambda: {
+            "example.com": [
+                {"Title": "Example", "Name": "Example", "BreachDate": "2020-01-01"}
+            ]
+        },
+    )
+
+    assert len(findings) == 1
+    assert findings[0].category == "service_known_breach"
+    assert "does not mean" in findings[0].explanation
+
+
+def test_analyze_known_breaches_skips_apps_and_ssh_keys() -> None:
+    credentials = (
+        Credential("csv:0", "csv", 0, "App", "alice", "Secret123!", ("androidapp://com.example",)),
+        Credential("csv:1", "csv", 1, "SSH", "", "", ("https://example.com",), False, False, True),
+    )
+
+    assert analyze_known_breaches(credentials, lambda: {"example.com": [{}]}) == ()

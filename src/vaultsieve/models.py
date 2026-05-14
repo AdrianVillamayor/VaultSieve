@@ -12,6 +12,7 @@ FindingCategory = Literal[
     "empty",
     "similar",
     "breached",
+    "service_known_breach",
     "domain_missing",
     "two_factor_not_stored",
     "input_issue",
@@ -78,6 +79,7 @@ class AuditOptions:
     check_breaches: bool = False
     check_domains: bool = False
     check_2fa: bool = False
+    check_known_breaches: bool = False
     hibp_workers: int = 4
     domain_workers: int = 16
     min_password_length: int = 12

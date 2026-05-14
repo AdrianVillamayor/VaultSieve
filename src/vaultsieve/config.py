@@ -14,6 +14,7 @@ ConfigKey = Literal[
     "check_breaches",
     "check_domains",
     "check_2fa",
+    "check_known_breaches",
     "hibp_workers",
     "domain_workers",
     "min_password_length",
@@ -25,6 +26,7 @@ CONFIG_KEYS: tuple[ConfigKey, ...] = (
     "check_breaches",
     "check_domains",
     "check_2fa",
+    "check_known_breaches",
     "hibp_workers",
     "domain_workers",
     "min_password_length",
@@ -40,6 +42,7 @@ class AppConfig:
     check_breaches: bool = False
     check_domains: bool = True
     check_2fa: bool = False
+    check_known_breaches: bool = False
     hibp_workers: int = 4
     domain_workers: int = 16
     min_password_length: int = 12
@@ -51,6 +54,7 @@ class AppConfig:
             "check_breaches": self.check_breaches,
             "check_domains": self.check_domains,
             "check_2fa": self.check_2fa,
+            "check_known_breaches": self.check_known_breaches,
             "hibp_workers": self.hibp_workers,
             "domain_workers": self.domain_workers,
             "min_password_length": self.min_password_length,
@@ -85,6 +89,7 @@ def load_config(path: Path | None = None) -> AppConfig:
         check_breaches=_as_bool(raw.get("check_breaches"), False),
         check_domains=_as_bool(raw.get("check_domains"), True),
         check_2fa=_as_bool(raw.get("check_2fa"), False),
+        check_known_breaches=_as_bool(raw.get("check_known_breaches"), False),
         hibp_workers=_as_positive_int(raw.get("hibp_workers"), 4),
         domain_workers=_as_positive_int(raw.get("domain_workers"), 16),
         min_password_length=_as_positive_int(raw.get("min_password_length"), 12),
@@ -127,7 +132,7 @@ def unset_config_value(key: str, path: Path | None = None) -> AppConfig:
 
 
 def parse_config_value(key: str, value: str) -> bool | int | str | list[str]:
-    if key in {"check_breaches", "check_domains", "check_2fa"}:
+    if key in {"check_breaches", "check_domains", "check_2fa", "check_known_breaches"}:
         normalized = value.strip().lower()
         if normalized in {"1", "true", "yes", "y", "on"}:
             return True

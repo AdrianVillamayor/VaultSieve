@@ -74,6 +74,10 @@ def _run_guided_audit(console: Console) -> None:
         "Check services that support TOTP 2FA using 2fa.directory?",
         default=config.check_2fa,
     )
+    check_known_breaches = Confirm.ask(
+        "Check whether saved services appear in the public HIBP breach catalogue?",
+        default=config.check_known_breaches,
+    )
     default_report_dir = Path(config.report_dir) if config.report_dir else input_path.parent / "vaultsieve_reports"
     report_dir = Path(Prompt.ask("Report directory", default=str(default_report_dir)))
 
@@ -85,6 +89,7 @@ def _run_guided_audit(console: Console) -> None:
                 check_breaches=check_breaches,
                 check_domains=check_domains,
                 check_2fa=check_2fa,
+                check_known_breaches=check_known_breaches,
                 hibp_workers=config.hibp_workers,
                 domain_workers=config.domain_workers,
                 min_password_length=config.min_password_length,
@@ -165,14 +170,15 @@ def _run_settings(console: Console) -> None:
         console.print(f"1. Check Have I Been Pwned by default: {values['check_breaches']}")
         console.print(f"2. Check domains by default: {values['check_domains']}")
         console.print(f"3. Check 2FA availability by default: {values['check_2fa']}")
-        console.print(f"4. HIBP workers: {values['hibp_workers']}")
-        console.print(f"5. Domain workers: {values['domain_workers']}")
-        console.print(f"6. Minimum password length: {values['min_password_length']}")
-        console.print(f"7. Report directory: {values['report_dir'] or '(next to input)'}")
-        console.print(f"8. Output formats: {', '.join(config.output_formats)}")
-        console.print("9. Back")
-        choice = Prompt.ask("Setting to change", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "q"], default="9")
-        if choice in {"9", "q"}:
+        console.print(f"4. Check known breached services by default: {values['check_known_breaches']}")
+        console.print(f"5. HIBP workers: {values['hibp_workers']}")
+        console.print(f"6. Domain workers: {values['domain_workers']}")
+        console.print(f"7. Minimum password length: {values['min_password_length']}")
+        console.print(f"8. Report directory: {values['report_dir'] or '(next to input)'}")
+        console.print(f"9. Output formats: {', '.join(config.output_formats)}")
+        console.print("10. Back")
+        choice = Prompt.ask("Setting to change", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "q"], default="10")
+        if choice in {"10", "q"}:
             return
         config = _updated_config_from_choice(console, config, choice)
         path = save_config(config)
@@ -188,17 +194,19 @@ def _updated_config_from_choice(console: Console, config: AppConfig, choice: str
     elif choice == "3":
         values["check_2fa"] = Confirm.ask("Check 2FA availability by default?", default=config.check_2fa)
     elif choice == "4":
-        values["hibp_workers"] = _ask_positive_int("HIBP workers", config.hibp_workers)
+        values["check_known_breaches"] = Confirm.ask("Check known breached services by default?", default=config.check_known_breaches)
     elif choice == "5":
-        values["domain_workers"] = _ask_positive_int("Domain workers", config.domain_workers)
+        values["hibp_workers"] = _ask_positive_int("HIBP workers", config.hibp_workers)
     elif choice == "6":
-        values["min_password_length"] = _ask_positive_int("Minimum password length", config.min_password_length)
+        values["domain_workers"] = _ask_positive_int("Domain workers", config.domain_workers)
     elif choice == "7":
+        values["min_password_length"] = _ask_positive_int("Minimum password length", config.min_password_length)
+    elif choice == "8":
         values["report_dir"] = Prompt.ask(
             "Report directory, empty means next to input",
             default=config.report_dir,
         ).strip()
-    elif choice == "8":
+    elif choice == "9":
         values["output_formats"] = parse_output_formats(
             Prompt.ask(
                 "Output formats (html, json, txt, all, or comma-separated)",
@@ -217,6 +225,7 @@ def _run_first_use_settings(console: Console) -> None:
         ),
         check_domains=Confirm.ask("Check credential domains by default?", default=True),
         check_2fa=Confirm.ask("Check 2FA availability using 2fa.directory by default?", default=False),
+        check_known_breaches=Confirm.ask("Check known breached services using the public HIBP catalogue by default?", default=False),
         hibp_workers=_ask_positive_int("HIBP workers", 4),
         domain_workers=_ask_positive_int("Domain workers", 16),
         min_password_length=_ask_positive_int("Minimum password length", 12),

@@ -72,6 +72,13 @@ def test_html_report_has_dashboard_filters_and_escapes_content(tmp_path) -> None
                 explanation="This service supports TOTP-based 2FA, but this vault entry does not include a stored TOTP secret.",
                 recommendation="Confirm 2FA is enabled for this account.",
             ),
+            Finding(
+                severity="low",
+                category="service_known_breach",
+                credential_ids=("bitwarden:0",),
+                explanation="The service domain example.com has appeared in public breach records. This does not mean this specific account was exposed.",
+                recommendation="Review this account.",
+            ),
         ),
     )
 
@@ -89,8 +96,12 @@ def test_html_report_has_dashboard_filters_and_escapes_content(tmp_path) -> None
     assert "What to do first" in html
     assert "What VaultSieve understood" in html
     assert "Health score" in html
+    assert "Risk at a glance" in html
+    assert "Penalties are capped" in html
+    assert "severity-chart" in html
     assert "Change 1 breached password entries first." in html
     assert "2FA Directory" in html
+    assert "Have I Been Pwned" in html
     assert "data-severity=\"critical\"" in html
     assert "Password vault audit" in html
     assert "never-render-this" not in html
@@ -146,6 +157,24 @@ def test_run_audit_can_check_2fa_with_injected_lookup(tmp_path) -> None:
     )
 
     assert any(finding.category == "two_factor_not_stored" for finding in report.findings)
+
+
+def test_run_audit_can_check_known_breaches_with_injected_lookup(tmp_path) -> None:
+    input_path = tmp_path / "passwords.csv"
+    input_path.write_text(
+        "name,url,username,password\n"
+        "Example,https://login.example.com,alice,Secret123!\n",
+        encoding="utf-8",
+    )
+
+    report = run_audit(
+        input_path,
+        "csv",
+        AuditOptions(check_known_breaches=True),
+        known_breaches_lookup=lambda: {"example.com": [{"Title": "Example", "BreachDate": "2020-01-01"}]},
+    )
+
+    assert any(finding.category == "service_known_breach" for finding in report.findings)
 
 
 def test_csv_clean_output_can_remove_obsolete_entries(tmp_path) -> None:

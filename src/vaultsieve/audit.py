@@ -6,6 +6,7 @@ from collections.abc import Callable
 from vaultsieve.analyzers.breaches import LookupFn, analyze_breaches
 from vaultsieve.analyzers.domains import DomainLookupFn, analyze_domains, extract_domain
 from vaultsieve.analyzers.duplicates import analyze_duplicates
+from vaultsieve.analyzers.known_breaches import KnownBreachesLookupFn, analyze_known_breaches
 from vaultsieve.analyzers.passwords import analyze_password_quality
 from vaultsieve.analyzers.two_factor import TwoFactorLookupFn, analyze_two_factor
 from vaultsieve.importers.bitwarden import import_bitwarden
@@ -31,6 +32,7 @@ def run_audit(
     breach_lookup: LookupFn | None = None,
     domain_lookup: DomainLookupFn | None = None,
     two_factor_lookup: TwoFactorLookupFn | None = None,
+    known_breaches_lookup: KnownBreachesLookupFn | None = None,
     progress: ProgressCallback | None = None,
 ) -> AuditReport:
     audit_options = options or AuditOptions()
@@ -130,6 +132,14 @@ def run_audit(
             findings.extend(analyze_two_factor(credentials))
         else:
             findings.extend(analyze_two_factor(credentials, two_factor_lookup))
+
+    if audit_options.check_known_breaches:
+        if progress is not None:
+            progress("Checking known breached services", None)
+        if known_breaches_lookup is None:
+            findings.extend(analyze_known_breaches(credentials))
+        else:
+            findings.extend(analyze_known_breaches(credentials, known_breaches_lookup))
 
     if progress is not None:
         progress("Preparing report", None)
