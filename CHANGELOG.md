@@ -1,13 +1,11 @@
 # Changelog
 
-## 0.1.0a1 - Preview
+## 0.1.0a1
 
-- Package preview for `vaultsieve`.
-- Adds interactive assistant via `vaultsieve` and `vaultsieve tui`.
-- Keeps direct automation command via `vaultsieve audit`.
-- Supports Bitwarden JSON and generic CSV imports.
-- Detects exact duplicates, reused passwords, empty passwords, short passwords, low-complexity passwords, and passwords similar to entry name or username.
-- Adds optional Have I Been Pwned checking using k-anonymity, unique-password caching, and limited concurrency.
-- Generates terminal, TXT, JSON, and HTML reports without full plaintext passwords.
-- Can optionally generate clean Bitwarden JSON or CSV outputs without exact duplicates.
-- Adds clean exits for expected errors and `Ctrl+C` cancellation.
+- Initial packaged Python preview app.
+- Added Bitwarden JSON and generic CSV importers.
+- Added terminal, TXT, JSON, and offline HTML reports.
+- Added duplicate, reuse, weak password, insecure HTTP, optional HIBP password, domain, 2FA Directory, and known breached service checks.
+- Added safe clean-output generation for exact duplicates and obsolete domain entries.
+- Added persistent config through CLI and TUI settings.
+- Added passkey and SSH-key awareness to avoid web/password false positives.

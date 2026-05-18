@@ -9,7 +9,7 @@ from rich.prompt import Confirm, Prompt
 from vaultsieve.assets import copy_logo_assets
 from vaultsieve.audit import run_audit
 from vaultsieve.cleaner import write_clean_output
-from vaultsieve.config import AppConfig, config_path, load_config, parse_output_formats, save_config
+from vaultsieve.config import AppConfig, config_path, load_config, parse_output_formats, reset_config, save_config
 from vaultsieve.errors import VaultSieveError
 from vaultsieve.models import AuditOptions, InputFormat
 from vaultsieve.progress import AuditProgress
@@ -176,10 +176,16 @@ def _run_settings(console: Console) -> None:
         console.print(f"7. Minimum password length: {values['min_password_length']}")
         console.print(f"8. Report directory: {values['report_dir'] or '(next to input)'}")
         console.print(f"9. Output formats: {', '.join(config.output_formats)}")
-        console.print("10. Back")
-        choice = Prompt.ask("Setting to change", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "q"], default="10")
-        if choice in {"10", "q"}:
+        console.print("10. Reset all defaults")
+        console.print("11. Back")
+        choice = Prompt.ask("Setting to change", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "q"], default="11")
+        if choice in {"11", "q"}:
             return
+        if choice == "10":
+            if Confirm.ask("Reset all settings to defaults?", default=False):
+                config = reset_config()
+                console.print(f"Saved settings to {config_path()}")
+            continue
         config = _updated_config_from_choice(console, config, choice)
         path = save_config(config)
         console.print(f"Saved settings to {path}")

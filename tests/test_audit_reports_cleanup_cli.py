@@ -67,6 +67,13 @@ def test_html_report_has_dashboard_filters_and_escapes_content(tmp_path) -> None
             ),
             Finding(
                 severity="medium",
+                category="insecure_http",
+                credential_ids=("bitwarden:0",),
+                explanation="This entry contains an insecure http:// URL.",
+                recommendation="Use HTTPS for this service if it supports encrypted connections.",
+            ),
+            Finding(
+                severity="medium",
                 category="two_factor_not_stored",
                 credential_ids=("bitwarden:0",),
                 explanation="This service supports TOTP-based 2FA, but this vault entry does not include a stored TOTP secret.",
@@ -76,7 +83,7 @@ def test_html_report_has_dashboard_filters_and_escapes_content(tmp_path) -> None
                 severity="low",
                 category="service_known_breach",
                 credential_ids=("bitwarden:0",),
-                explanation="The service domain example.com has appeared in public breach records. This does not mean this specific account was exposed.",
+                explanation="The service domain example.com has public breach history. This does not mean your email or this specific account was exposed.",
                 recommendation="Review this account.",
             ),
         ),
@@ -95,7 +102,18 @@ def test_html_report_has_dashboard_filters_and_escapes_content(tmp_path) -> None
     assert "class=\"brand-icon\"" in html
     assert "What to do first" in html
     assert "What VaultSieve understood" in html
-    assert "Health score" in html
+    assert "Inspect by category" in html
+    assert "Audit summary" in html
+    assert "Compromised passwords" in html
+    assert "Insecure websites" in html
+    assert "Breached services" in html
+    assert "data-category-filter=\"breached\"" in html
+    assert "Selected findings" in html
+    assert "Cleanup plan" in html
+    assert "Safe duplicate removals" in html
+    assert "class=\"findings-table\"" in html
+    assert "Issue / recommendation" in html
+    assert "health score" in html
     assert "Risk at a glance" in html
     assert "Penalties are capped" in html
     assert "severity-chart" in html
@@ -309,6 +327,19 @@ def test_cli_missing_file_returns_clean_error(capsys) -> None:
     assert exit_code == 1
     assert "Input file does not exist" in captured.err
     assert "Traceback" not in captured.err
+
+
+def test_cli_config_path_and_reset(monkeypatch, tmp_path, capsys) -> None:
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("VAULTSIEVE_CONFIG_PATH", str(config_path))
+
+    assert main(["config", "set", "check_domains", "false"]) == 0
+    assert main(["config", "path"]) == 0
+    assert main(["config", "reset"]) == 0
+
+    captured = capsys.readouterr()
+    assert str(config_path) in captured.out
+    assert "Reset all config values" in captured.out
 
 
 def test_cli_outputs_only_summary_not_finding_details(tmp_path, capsys) -> None:

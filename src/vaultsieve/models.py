@@ -10,6 +10,7 @@ FindingCategory = Literal[
     "reuse",
     "weak",
     "empty",
+    "insecure_http",
     "similar",
     "breached",
     "service_known_breach",

@@ -131,6 +131,12 @@ def unset_config_value(key: str, path: Path | None = None) -> AppConfig:
     return updated
 
 
+def reset_config(path: Path | None = None) -> AppConfig:
+    config = AppConfig()
+    save_config(config, path)
+    return config
+
+
 def parse_config_value(key: str, value: str) -> bool | int | str | list[str]:
     if key in {"check_breaches", "check_domains", "check_2fa", "check_known_breaches"}:
         normalized = value.strip().lower()

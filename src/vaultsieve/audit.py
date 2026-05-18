@@ -6,6 +6,7 @@ from collections.abc import Callable
 from vaultsieve.analyzers.breaches import LookupFn, analyze_breaches
 from vaultsieve.analyzers.domains import DomainLookupFn, analyze_domains, extract_domain
 from vaultsieve.analyzers.duplicates import analyze_duplicates
+from vaultsieve.analyzers.insecure_http import analyze_insecure_http
 from vaultsieve.analyzers.known_breaches import KnownBreachesLookupFn, analyze_known_breaches
 from vaultsieve.analyzers.passwords import analyze_password_quality
 from vaultsieve.analyzers.two_factor import TwoFactorLookupFn, analyze_two_factor
@@ -53,6 +54,11 @@ def run_audit(
             min_length=audit_options.min_password_length,
         )
     )
+
+    if progress is not None:
+        progress("Checking insecure website URLs", None)
+    findings.extend(analyze_insecure_http(credentials))
+
     if audit_options.check_breaches:
         total = len({credential.password for credential in credentials if credential.password})
         checked = 0

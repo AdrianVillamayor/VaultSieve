@@ -6,9 +6,12 @@ This repo is currently at preview version `0.1.0a1`.
 
 - Confirm `pyproject.toml` and `src/vaultsieve/__init__.py` have the same version.
 - Update `CHANGELOG.md`.
+- Confirm `LICENSE` exists and matches `pyproject.toml` metadata.
 - Run tests: `.venv/bin/python -m pytest`.
+- Install build tools if needed: `.venv/bin/python -m pip install build twine`.
 - Build package: `.venv/bin/python -m build`.
 - Check package metadata: `.venv/bin/python -m twine check dist/*`.
+- Confirm package data includes logo assets used by HTML reports.
 
 ## PyPI And pipx
 

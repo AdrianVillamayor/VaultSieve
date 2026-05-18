@@ -4,6 +4,7 @@ from vaultsieve.analyzers.duplicates import (
     duplicate_cleanup_plan,
     duplicate_removal_ids,
 )
+from vaultsieve.analyzers.insecure_http import analyze_insecure_http
 from vaultsieve.analyzers.known_breaches import analyze_known_breaches
 from vaultsieve.analyzers.passwords import analyze_password_quality
 from vaultsieve.analyzers.two_factor import analyze_two_factor
@@ -76,6 +77,21 @@ def test_password_quality_skips_passkey_without_password_and_ssh_key() -> None:
     )
 
     assert analyze_password_quality(credentials) == ()
+
+
+def test_analyze_insecure_http_reports_http_urls_only() -> None:
+    credentials = (
+        Credential("csv:0", "csv", 0, "Bad", "alice", "Secret123!", ("http://example.com",)),
+        Credential("csv:1", "csv", 1, "Good", "alice", "Secret123!", ("https://example.com",)),
+        Credential("csv:2", "csv", 2, "App", "alice", "Secret123!", ("androidapp://com.example",)),
+        Credential("csv:3", "csv", 3, "SSH", "", "", ("http://example.com",), False, False, True),
+    )
+
+    findings = analyze_insecure_http(credentials)
+
+    assert len(findings) == 1
+    assert findings[0].category == "insecure_http"
+    assert findings[0].credential_ids == ("csv:0",)
 
 
 def test_breach_lookup_uses_prefix_only() -> None:
@@ -172,7 +188,7 @@ def test_analyze_known_breaches_reports_public_breach_history() -> None:
 
     assert len(findings) == 1
     assert findings[0].category == "service_known_breach"
-    assert "does not mean" in findings[0].explanation
+    assert "does not mean your email" in findings[0].explanation
 
 
 def test_analyze_known_breaches_skips_apps_and_ssh_keys() -> None:

@@ -17,10 +17,9 @@ dist/
 
 # Local VaultSieve outputs
 vaultsieve_reports/
-bitwarden_clean.json
-bitwarden_duplicates_report.txt
 *_export.json
-*_clean.json
+*.json
+*.csv
 
 # Local editor and OS files
 .DS_Store

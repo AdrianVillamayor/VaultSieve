@@ -86,8 +86,8 @@ def analyze_known_breaches(
                 severity="low",
                 category="service_known_breach",
                 credential_ids=tuple(credential.id for credential in affected_credentials),
-                explanation=f"The service domain {domain} has appeared in public breach records. This does not mean these specific accounts were exposed. Known breach history: {history}{extra}.",
-                recommendation="Review these accounts, avoid password reuse, rotate old passwords, and enable 2FA where available.",
+                explanation=f"The service domain {domain} has public breach history. This does not mean your email or these specific accounts were exposed. Known breach history: {history}{extra}.",
+                recommendation="Review these accounts, especially if passwords are old or reused, and enable 2FA where available.",
             )
         )
     return tuple(findings)

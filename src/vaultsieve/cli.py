@@ -9,7 +9,7 @@ from vaultsieve import __version__
 from vaultsieve.assets import copy_logo_assets
 from vaultsieve.audit import run_audit
 from vaultsieve.cleaner import write_clean_output
-from vaultsieve.config import CONFIG_KEYS, config_path, load_config, set_config_value, unset_config_value
+from vaultsieve.config import CONFIG_KEYS, config_path, load_config, reset_config, set_config_value, unset_config_value
 from vaultsieve.errors import VaultSieveError
 from vaultsieve.models import AuditOptions, InputFormat, Severity
 from vaultsieve.progress import AuditProgress
@@ -56,6 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
     config = subparsers.add_parser("config", help="Read or update persistent defaults.")
     config_subparsers = config.add_subparsers(dest="config_command")
     config_subparsers.add_parser("list", help="Show all config values.")
+    config_subparsers.add_parser("path", help="Show the config file path.")
+    config_subparsers.add_parser("reset", help="Reset all config values to defaults.")
     get_config = config_subparsers.add_parser("get", help="Show one config value.")
     get_config.add_argument("key", choices=CONFIG_KEYS)
     set_config = config_subparsers.add_parser("set", help="Set one config value.")
@@ -181,6 +183,13 @@ def _run_config_command(args: argparse.Namespace) -> int:
     if command == "get":
         config = load_config()
         print(config.to_dict()[args.key])
+        return 0
+    if command == "path":
+        print(config_path())
+        return 0
+    if command == "reset":
+        reset_config()
+        print("Reset all config values")
         return 0
     if command == "set":
         set_config_value(args.key, args.value)
