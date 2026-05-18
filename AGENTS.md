@@ -4,7 +4,7 @@
 
 - This repo is now a packaged Python preview app named `vaultsieve`.
 - Source lives under `src/vaultsieve/`; root `main.py` is only a compatibility shim to `vaultsieve.cli`.
-- Current preview version is `0.1.0a1` in both `pyproject.toml` and `src/vaultsieve/__init__.py`.
+- Current version is `1.0.0` in both `pyproject.toml` and `src/vaultsieve/__init__.py`.
 - There is no CI, formatter config, or pre-commit config yet.
 
 ## Commands

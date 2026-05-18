@@ -87,12 +87,13 @@ def _write_clean_csv(
     credentials: tuple[Credential, ...],
     remove_ids: set[str],
 ) -> int:
-    rows = [credential for credential in credentials if credential.id not in remove_ids]
+    kept = [credential for credential in credentials if credential.id not in remove_ids]
+    removed = len(credentials) - len(kept)
     try:
         with output_path.open("w", encoding="utf-8", newline="") as file:
             writer = csv.DictWriter(file, fieldnames=["name", "url", "username", "password"])
             writer.writeheader()
-            for credential in rows:
+            for credential in kept:
                 writer.writerow(
                     {
                         "name": credential.name,
@@ -103,4 +104,4 @@ def _write_clean_csv(
                 )
     except OSError as err:
         raise VaultSieveError(f"Cannot write clean output: {output_path}") from err
-    return len(remove_ids)
+    return removed

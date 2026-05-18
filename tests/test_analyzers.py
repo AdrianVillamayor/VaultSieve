@@ -1,4 +1,6 @@
 from vaultsieve.analyzers.breaches import analyze_breaches, is_password_breached
+from vaultsieve.analyzers.domain_concentration import analyze_domain_concentration
+from vaultsieve.analyzers.domains import analyze_domains
 from vaultsieve.analyzers.duplicates import (
     analyze_duplicates,
     duplicate_cleanup_plan,
@@ -74,6 +76,18 @@ def test_password_quality_skips_passkey_without_password_and_ssh_key() -> None:
     credentials = (
         Credential("csv:0", "csv", 0, "Passkey", "alice", "", (), True, False, False),
         Credential("csv:1", "csv", 1, "SSH", "", "", (), False, False, True),
+        Credential(
+            "csv:2",
+            "csv",
+            2,
+            "App",
+            "alice",
+            "",
+            ("androidapp://com.example",),
+            False,
+            False,
+            False,
+        ),
     )
 
     assert analyze_password_quality(credentials) == ()
@@ -87,11 +101,57 @@ def test_analyze_insecure_http_reports_http_urls_only() -> None:
         Credential("csv:3", "csv", 3, "SSH", "", "", ("http://example.com",), False, False, True),
     )
 
-    findings = analyze_insecure_http(credentials)
+    findings = analyze_insecure_http(credentials, lambda _url: False)
 
     assert len(findings) == 1
     assert findings[0].category == "insecure_http"
     assert findings[0].credential_ids == ("csv:0",)
+
+
+def test_analyze_insecure_http_skips_http_urls_that_redirect_to_https() -> None:
+    credentials = (
+        Credential("csv:0", "csv", 0, "Redirect", "alice", "Secret123!", ("http://example.com",)),
+    )
+
+    assert analyze_insecure_http(credentials, lambda _url: True) == ()
+
+
+def test_analyze_insecure_http_checks_each_unique_url_once() -> None:
+    calls: list[str] = []
+    credentials = tuple(
+        Credential(f"csv:{index}", "csv", index, "Same", "alice", "Secret123!", ("http://example.com",))
+        for index in range(10)
+    )
+
+    def redirect_check(url: str) -> bool:
+        calls.append(url)
+        return False
+
+    findings = analyze_insecure_http(credentials, redirect_check)
+
+    assert len(findings) == 10
+    assert calls == ["http://example.com"]
+
+
+def test_analyze_domain_concentration_reports_many_accounts_on_same_domain() -> None:
+    credentials = tuple(
+        Credential(
+            f"csv:{index}",
+            "csv",
+            index,
+            f"Example {index}",
+            f"user{index}@example.com",
+            f"Secret{index}!",
+            (f"https://login.example.com/{index}",),
+        )
+        for index in range(5)
+    )
+
+    findings = analyze_domain_concentration(credentials)
+
+    assert len(findings) == 1
+    assert findings[0].category == "domain_concentration"
+    assert "5 saved entries" in findings[0].explanation
 
 
 def test_breach_lookup_uses_prefix_only() -> None:
@@ -198,3 +258,98 @@ def test_analyze_known_breaches_skips_apps_and_ssh_keys() -> None:
     )
 
     assert analyze_known_breaches(credentials, lambda: {"example.com": [{}]}) == ()
+
+
+def test_analyze_domain_concentration_ignores_below_threshold() -> None:
+    credentials = tuple(
+        Credential(
+            f"csv:{index}",
+            "csv",
+            index,
+            f"Example {index}",
+            f"user{index}@example.com",
+            f"Secret{index}!",
+            (f"https://login.example.com/{index}",),
+        )
+        for index in range(3)
+    )
+
+    assert analyze_domain_concentration(credentials) == ()
+
+
+def test_analyze_domain_concentration_skips_ssh_keys() -> None:
+    credentials = tuple(
+        Credential(
+            f"csv:{index}",
+            "csv",
+            index,
+            f"SSH Key {index}",
+            "",
+            "",
+            ("https://login.example.com",),
+            False,
+            False,
+            True,
+        )
+        for index in range(5)
+    )
+
+    assert analyze_domain_concentration(credentials) == ()
+
+
+def test_analyze_domain_concentration_custom_threshold() -> None:
+    credentials = tuple(
+        Credential(
+            f"csv:{index}",
+            "csv",
+            index,
+            f"Example {index}",
+            f"user{index}@example.com",
+            f"Secret{index}!",
+            (f"https://login.example.com/{index}",),
+        )
+        for index in range(3)
+    )
+
+    findings = analyze_domain_concentration(credentials, min_accounts=3)
+
+    assert len(findings) == 1
+    assert findings[0].category == "domain_concentration"
+
+
+def test_analyze_insecure_http_handles_redirect_check_failure() -> None:
+    credentials = (
+        Credential("csv:0", "csv", 0, "Bad", "alice", "Secret123!", ("http://example.com",)),
+    )
+
+    def failing_redirect_check(url: str) -> bool:
+        raise Exception("network error")
+
+    findings = analyze_insecure_http(credentials, failing_redirect_check)
+
+    assert len(findings) == 1
+    assert findings[0].category == "insecure_http"
+
+
+def test_analyze_domains_reports_missing_domain() -> None:
+    credentials = (
+        Credential("csv:0", "csv", 0, "Gone", "alice", "Secret123!", ("https://gone.example.com",)),
+    )
+
+    findings = analyze_domains(credentials, lookup=lambda _domain: False)
+
+    assert len(findings) == 1
+    assert findings[0].category == "domain_missing"
+
+
+def test_analyze_domains_handles_lookup_failure() -> None:
+    credentials = (
+        Credential("csv:0", "csv", 0, "Broken", "alice", "Secret123!", ("https://broken.example.com",)),
+    )
+
+    def failing_lookup(domain: str) -> bool:
+        raise Exception("DNS failure")
+
+    findings = analyze_domains(credentials, lookup=failing_lookup)
+
+    assert findings == ()

@@ -5,7 +5,7 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from vaultsieve.errors import VaultSieveError
 
@@ -40,7 +40,7 @@ OUTPUT_FORMATS: tuple[OutputFormat, ...] = ("html", "json", "txt")
 @dataclass(frozen=True)
 class AppConfig:
     check_breaches: bool = False
-    check_domains: bool = True
+    check_domains: bool = False
     check_2fa: bool = False
     check_known_breaches: bool = False
     hibp_workers: int = 4
@@ -87,7 +87,7 @@ def load_config(path: Path | None = None) -> AppConfig:
         raise VaultSieveError(f"Invalid config file: {resolved_path}")
     return AppConfig(
         check_breaches=_as_bool(raw.get("check_breaches"), False),
-        check_domains=_as_bool(raw.get("check_domains"), True),
+        check_domains=_as_bool(raw.get("check_domains"), False),
         check_2fa=_as_bool(raw.get("check_2fa"), False),
         check_known_breaches=_as_bool(raw.get("check_known_breaches"), False),
         hibp_workers=_as_positive_int(raw.get("hibp_workers"), 4),
@@ -171,7 +171,7 @@ def parse_output_formats(value: str) -> tuple[OutputFormat, ...]:
         )
     result: list[OutputFormat] = []
     for item in requested:
-        output_format = item  # type: ignore[assignment]
+        output_format = cast(OutputFormat, item)
         if output_format not in result:
             result.append(output_format)
     return tuple(result)

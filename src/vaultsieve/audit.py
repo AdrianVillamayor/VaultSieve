@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 
 from vaultsieve.analyzers.breaches import LookupFn, analyze_breaches
+from vaultsieve.analyzers.domain_concentration import analyze_domain_concentration
 from vaultsieve.analyzers.domains import DomainLookupFn, analyze_domains, extract_domain
 from vaultsieve.analyzers.duplicates import analyze_duplicates
 from vaultsieve.analyzers.insecure_http import analyze_insecure_http
@@ -12,7 +13,14 @@ from vaultsieve.analyzers.passwords import analyze_password_quality
 from vaultsieve.analyzers.two_factor import TwoFactorLookupFn, analyze_two_factor
 from vaultsieve.importers.bitwarden import import_bitwarden
 from vaultsieve.importers.csv_generic import import_csv
-from vaultsieve.models import AuditOptions, AuditReport, Credential, Finding, InputFormat, SEVERITY_ORDER
+from vaultsieve.models import (
+    SEVERITY_ORDER,
+    AuditOptions,
+    AuditReport,
+    Credential,
+    Finding,
+    InputFormat,
+)
 
 ProgressCallback = Callable[[str, int | None], None]
 
@@ -59,6 +67,10 @@ def run_audit(
         progress("Checking insecure website URLs", None)
     findings.extend(analyze_insecure_http(credentials))
 
+    if progress is not None:
+        progress("Checking domains with many saved accounts", None)
+    findings.extend(analyze_domain_concentration(credentials))
+
     if audit_options.check_breaches:
         total = len({credential.password for credential in credentials if credential.password})
         checked = 0
@@ -94,10 +106,10 @@ def run_audit(
 
     if audit_options.check_domains:
         domains = {
-            extract_domain(url)
+            d
             for credential in credentials
             for url in credential.urls
-            if extract_domain(url)
+            if (d := extract_domain(url))
         }
         total = len(domains)
         checked = 0

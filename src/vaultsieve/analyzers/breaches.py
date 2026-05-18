@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import urllib.request
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from vaultsieve.models import Credential, Finding
+
+logger = logging.getLogger(__name__)
 
 LookupFn = Callable[[str], str]
 ProgressFn = Callable[[str], None]
@@ -63,7 +66,8 @@ def analyze_breaches(
             password = future_to_password[future]
             try:
                 breached_by_password[password] = future.result()
-            except Exception:
+            except Exception as exc:
+                logger.warning("HIBP lookup failed: %s", exc)
                 for credential in credentials_by_password[password]:
                     findings.append(
                         Finding(

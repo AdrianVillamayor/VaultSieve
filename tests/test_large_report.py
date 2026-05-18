@@ -37,7 +37,8 @@ def test_large_html_report_renders_without_plaintext_passwords(tmp_path: Path) -
     html = render_html_report(report)
 
     assert "class=\"findings-table\"" in html
-    assert "Category dashboard" in html
-    assert "Cleanup plan" in html
+    assert "Vault health at a glance" in html
+    assert "Action board" in html
+    assert "Cleanup plan" not in html
     assert "Secret-1" not in html
     assert html.count("<tr class=\"finding-row") == 120

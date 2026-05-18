@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from types import TracebackType
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, Task, TextColumn, TimeElapsedColumn
@@ -9,7 +10,7 @@ PROGRESS_COUNTER_RE = re.compile(r" \(\d+/\d+ unique (?:passwords|domains)\)$")
 
 
 class DoneAwareSpinnerColumn(SpinnerColumn):
-    def render(self, task: Task):  # type: ignore[no-untyped-def]
+    def render(self, task: Task) -> str:
         if task.fields.get("done"):
             return "✓"
         return super().render(task)
@@ -32,8 +33,12 @@ class AuditProgress:
         self._progress.__enter__()
         return self
 
-    # type: ignore[no-untyped-def]
-    def __exit__(self, exc_type, exc, traceback) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         if self._progress is not None:
             self._progress.__exit__(exc_type, exc, traceback)
 

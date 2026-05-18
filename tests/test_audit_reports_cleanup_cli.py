@@ -73,6 +73,13 @@ def test_html_report_has_dashboard_filters_and_escapes_content(tmp_path) -> None
                 recommendation="Use HTTPS for this service if it supports encrypted connections.",
             ),
             Finding(
+                severity="low",
+                category="domain_concentration",
+                credential_ids=("bitwarden:0",),
+                explanation="The domain example.com has 5 saved entries, 5 usernames, and 5 distinct passwords.",
+                recommendation="Review whether these accounts are still needed.",
+            ),
+            Finding(
                 severity="medium",
                 category="two_factor_not_stored",
                 credential_ids=("bitwarden:0",),
@@ -94,30 +101,27 @@ def test_html_report_has_dashboard_filters_and_escapes_content(tmp_path) -> None
     assert "id=\"search\"" in html
     assert "id=\"severity-filter\"" in html
     assert "overflow-y: auto" in html
-    assert "max-height: min(760px, 64vh)" in html
-    assert "radial-gradient(circle, var(--dot)" in html
+    assert "max-height: min(780px, 68vh)" in html
     assert "--accent-soft" in html
     assert "rel=\"icon\"" in html
     assert "VaultSieve" in html
     assert "class=\"brand-icon\"" in html
-    assert "What to do first" in html
-    assert "What VaultSieve understood" in html
-    assert "Inspect by category" in html
-    assert "Audit summary" in html
-    assert "Compromised passwords" in html
-    assert "Insecure websites" in html
-    assert "Breached services" in html
-    assert "data-category-filter=\"breached\"" in html
+    assert "Action board" in html
+    assert "Vault health at a glance" in html
+    assert "Vault health at a glance" in html
+    assert "Strengthen security" in html
+    assert "Review services" in html
+    assert "data-category-filter=\"breached,empty\"" in html
     assert "Selected findings" in html
-    assert "Cleanup plan" in html
-    assert "Safe duplicate removals" in html
+    assert "Cleanup plan" not in html
     assert "class=\"findings-table\"" in html
     assert "Issue / recommendation" in html
     assert "health score" in html
-    assert "Risk at a glance" in html
-    assert "Penalties are capped" in html
+    assert "Severity mix" in html
+    assert "score is capped" in html
     assert "severity-chart" in html
-    assert "Change 1 breached password entries first." in html
+    assert "Fix critical passwords" in html
+    assert "1 breached entry" in html
     assert "2FA Directory" in html
     assert "Have I Been Pwned" in html
     assert "data-severity=\"critical\"" in html

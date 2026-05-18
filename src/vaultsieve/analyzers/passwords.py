@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 from vaultsieve.models import Credential, Finding, normalize
 
 
@@ -23,6 +25,16 @@ def _is_similar(password: str, *values: str) -> bool:
     return False
 
 
+def _has_only_app_urls(credential: Credential) -> bool:
+    if not credential.urls:
+        return False
+    for url in credential.urls:
+        scheme = urlparse(url.strip()).scheme.lower()
+        if scheme in {"", "http", "https"}:
+            return False
+    return True
+
+
 def analyze_password_quality(
     credentials: tuple[Credential, ...],
     *,
@@ -34,7 +46,7 @@ def analyze_password_quality(
             continue
         password = credential.password
         if not password:
-            if credential.has_passkey:
+            if credential.has_passkey or _has_only_app_urls(credential):
                 continue
             findings.append(
                 Finding(

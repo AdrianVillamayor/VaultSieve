@@ -11,6 +11,7 @@ FindingCategory = Literal[
     "weak",
     "empty",
     "insecure_http",
+    "domain_concentration",
     "similar",
     "breached",
     "service_known_breach",

@@ -15,7 +15,10 @@ class DuplicateDecision:
     reason: str
 
 
-def duplicate_key(credential: Credential) -> tuple[str, str, str, tuple[str, ...]]:
+DuplicateKey = tuple[str, str, str, tuple[str, ...], str, str, str]
+
+
+def duplicate_key(credential: Credential) -> DuplicateKey:
     return (
         normalize(credential.name),
         normalize(credential.username),
@@ -28,7 +31,7 @@ def duplicate_key(credential: Credential) -> tuple[str, str, str, tuple[str, ...
 
 
 def analyze_duplicates(credentials: tuple[Credential, ...]) -> tuple[Finding, ...]:
-    by_exact: dict[tuple[str, str, str, tuple[str, ...]], list[Credential]] = defaultdict(list)
+    by_exact: dict[DuplicateKey, list[Credential]] = defaultdict(list)
     by_password: dict[str, list[Credential]] = defaultdict(list)
 
     for credential in credentials:
@@ -74,7 +77,7 @@ def duplicate_removal_ids(credentials: tuple[Credential, ...]) -> set[str]:
 
 
 def duplicate_groups(credentials: tuple[Credential, ...]) -> tuple[tuple[Credential, ...], ...]:
-    grouped: dict[tuple[str, str, str, tuple[str, ...]], list[Credential]] = defaultdict(list)
+    grouped: dict[DuplicateKey, list[Credential]] = defaultdict(list)
     for credential in credentials:
         grouped[duplicate_key(credential)].append(credential)
 

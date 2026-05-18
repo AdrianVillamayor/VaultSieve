@@ -3,8 +3,7 @@ from __future__ import annotations
 from html import escape
 
 from vaultsieve.analyzers.duplicates import duplicate_cleanup_plan
-from vaultsieve.analyzers.domains import extract_domain
-from vaultsieve.models import AuditReport, Finding, SEVERITY_ORDER
+from vaultsieve.models import SEVERITY_ORDER, AuditReport, Finding
 
 SEVERITY_LABELS = ("critical", "high", "medium", "low", "obsolete")
 
@@ -18,14 +17,11 @@ def render_html_report(
     findings = sorted(
         report.findings, key=lambda finding: SEVERITY_ORDER[finding.severity])
     dashboard = _dashboard_metrics(report)
-    generated_summary = _render_summary(report, dashboard)
-    score_panel = _render_score_panel(report, dashboard)
-    action_plan = _render_action_plan(report, dashboard)
-    inventory = _render_inventory(dashboard)
-    cleanup_plan = _render_cleanup_plan(report, dashboard)
-    category_dashboard = _render_category_dashboard(report, dashboard)
-    filters = _render_filters(findings)
+    overview = _render_overview(report, dashboard)
+    action_plan = _render_action_plan(dashboard)
     finding_cards = _render_finding_cards(report, findings)
+    initial_severity = "critical" if len(findings) > 250 and report.summary_by_severity["critical"] else "all"
+    initial_filter_text = "Showing all findings" if initial_severity == "all" else f"Showing severity: {initial_severity}"
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -55,29 +51,21 @@ def render_html_report(
       </div>
     </header>
 
-    {generated_summary}
-
-    {inventory}
-
-    {score_panel}
-
-    {category_dashboard}
+    {overview}
 
     {action_plan}
-
-    {cleanup_plan}
 
     <section class="affected-heading">
       <div>
         <p class="section-kicker">Affected entries</p>
         <h2>Selected findings</h2>
       </div>
-      <p>Use a category card or the filters to inspect the accounts behind each issue.</p>
+      <p>Use an action button or the filters to inspect the accounts behind each issue.</p>
     </section>
 
-    {filters}
+    {_render_filters(findings, initial_severity)}
 
-    <section class="active-filter" id="active-filter">Showing all findings</section>
+    <section class="active-filter" id="active-filter">{escape(initial_filter_text)}</section>
 
     <section class="toolbar-result">
       <span id="visible-count">{len(findings)}</span> visible findings
@@ -100,6 +88,14 @@ def render_html_report(
 
 def _dashboard_metrics(report: AuditReport) -> dict[str, int]:
     category_counts: dict[str, int] = {}
+    credential_map = report.credential_map()
+    breached_passwords = {
+        credential.password
+        for finding in report.findings
+        if finding.category == "breached"
+        for credential_id in finding.credential_ids
+        if (credential := credential_map.get(credential_id)) is not None and credential.password
+    }
     for finding in report.findings:
         category_counts[finding.category] = category_counts.get(
             finding.category, 0) + 1
@@ -107,29 +103,6 @@ def _dashboard_metrics(report: AuditReport) -> dict[str, int]:
     cleanup_plan = duplicate_cleanup_plan(report.credentials)
     safe_duplicate_removals = sum(len(decision.remove_ids)
                                   for decision in cleanup_plan)
-    ambiguous_duplicate_groups = sum(
-        1 for decision in cleanup_plan if not decision.remove_ids)
-    web_entries = sum(1 for credential in report.credentials if any(
-        extract_domain(url) for url in credential.urls))
-    app_entries = sum(
-        1
-        for credential in report.credentials
-        if credential.urls and not any(extract_domain(url) for url in credential.urls)
-    )
-    passkeys = sum(
-        1 for credential in report.credentials if credential.has_passkey)
-    ssh_keys = sum(
-        1 for credential in report.credentials if credential.is_ssh_key)
-    highest_risk = category_counts.get(
-        "breached", 0) + category_counts.get("empty", 0)
-    needs_review = (
-        category_counts.get("reuse", 0)
-        + category_counts.get("domain_missing", 0)
-        + category_counts.get("two_factor_not_stored", 0)
-        + category_counts.get("service_known_breach", 0)
-        + category_counts.get("insecure_http", 0)
-        + ambiguous_duplicate_groups
-    )
     severity_counts = report.summary_by_severity
     penalty = (
         min(45, severity_counts["critical"] * 10)
@@ -142,17 +115,17 @@ def _dashboard_metrics(report: AuditReport) -> dict[str, int]:
     return {
         "health_score": health_score,
         "safe_duplicate_removals": safe_duplicate_removals,
-        "ambiguous_duplicate_groups": ambiguous_duplicate_groups,
-        "highest_risk": highest_risk,
-        "needs_review": needs_review,
-        "web_entries": web_entries,
-        "app_entries": app_entries,
-        "passkeys": passkeys,
-        "ssh_keys": ssh_keys,
         "breached": category_counts.get("breached", 0),
+        "breached_unique_passwords": len(breached_passwords),
         "empty": category_counts.get("empty", 0),
         "reuse": category_counts.get("reuse", 0),
         "insecure_http": category_counts.get("insecure_http", 0),
+        "domain_concentration": category_counts.get("domain_concentration", 0),
+        "domain_concentration_affected": sum(
+            len(finding.credential_ids)
+            for finding in report.findings
+            if finding.category == "domain_concentration"
+        ),
         "domain_missing": category_counts.get("domain_missing", 0),
         "obsolete_candidates": sum(
             len(finding.credential_ids)
@@ -165,169 +138,26 @@ def _dashboard_metrics(report: AuditReport) -> dict[str, int]:
     }
 
 
-def _render_summary(report: AuditReport, dashboard: dict[str, int]) -> str:
-    items = [
-        ("Health", str(dashboard["health_score"]), "score"),
-        ("Credentials", str(len(report.credentials)), "imported"),
-        ("Findings", str(len(report.findings)), "detected"),
-        ("Highest risk", str(dashboard["highest_risk"]), "urgent"),
-        ("Needs review", str(dashboard["needs_review"]), "manual"),
-        ("Safe cleanup", str(
-            dashboard["safe_duplicate_removals"]), "removable"),
-    ]
-    pills = "".join(
-        f"<div class=\"summary-pill\"><span>{escape(label)}</span><strong>{escape(value)}</strong><small>{escape(unit)}</small></div>"
-        for label, value, unit in items
-    )
+def _render_overview(report: AuditReport, dashboard: dict[str, int]) -> str:
+    severity_chart = _render_severity_chart(report)
     return f"""
-    <section class="summary-grid">
-      <div>
-        <p class="section-kicker">Audit summary</p>
-        <h2>What needs attention</h2>
-      </div>
-      <div class="summary-pills">{pills}</div>
-    </section>
-    """
-
-
-def _render_category_dashboard(report: AuditReport, dashboard: dict[str, int]) -> str:
-    category_counts: dict[str, int] = {}
-    affected_counts: dict[str, int] = {}
-    for finding in report.findings:
-        category_counts[finding.category] = category_counts.get(
-            finding.category, 0) + 1
-        affected_counts[finding.category] = affected_counts.get(
-            finding.category, 0) + len(finding.credential_ids)
-
-    cards = [
-        _category_card(
-            "Compromised passwords",
-            "breached",
-            affected_counts.get("breached", 0),
-            "critical",
-            "Found in breach data.",
-            "Change immediately.",
-        ),
-        _category_card(
-            "Reused passwords",
-            "reuse",
-            category_counts.get("reuse", 0),
-            "high",
-            "Same password, different entries.",
-            "Rotate to unique passwords.",
-            "groups",
-        ),
-        _category_card(
-            "Weak passwords",
-            "weak",
-            affected_counts.get("weak", 0),
-            "medium",
-            "Short or easy to guess.",
-            "Replace after urgent fixes.",
-        ),
-        _category_card(
-            "Insecure websites",
-            "insecure_http",
-            affected_counts.get("insecure_http", 0),
-            "medium",
-            "Entry uses http://.",
-            "Switch to HTTPS if possible.",
-        ),
-        _category_card(
-            "2FA not stored",
-            "two_factor_not_stored",
-            affected_counts.get("two_factor_not_stored", 0),
-            "medium",
-            "TOTP supported, not stored here.",
-            "Confirm 2FA is enabled.",
-        ),
-        _category_card(
-            "Breached services",
-            "service_known_breach",
-            affected_counts.get("service_known_breach", 0),
-            "low",
-            "Public breach history. Not email proof.",
-            "Review old/reused passwords.",
-        ),
-        _category_card(
-            "Missing domains",
-            "domain_missing",
-            affected_counts.get("domain_missing", 0),
-            "obsolete",
-            "Domain did not resolve.",
-            "Confirm before deleting.",
-        ),
-        _category_card(
-            "Safe duplicate cleanup",
-            "duplicate",
-            dashboard["safe_duplicate_removals"],
-            "high",
-            "Exact duplicates with a keeper.",
-            "Create clean output.",
-            "removable",
-        ),
-        _category_card(
-            "Inventory context",
-            "all",
-            len(report.credentials),
-            "low",
-            "Web, app, passkey, SSH mix.",
-            "Use for coverage context.",
-            "entries",
-        ),
-    ]
-    return f"""
-    <section class="category-dashboard">
-      <div class="category-dashboard-heading">
-        <div>
-          <p class="section-kicker">Category dashboard</p>
-          <h2>Inspect by category</h2>
+    <section class="overview-panel">
+      <div class="overview-main">
+        <div class="score-orb" style="--score: {dashboard['health_score']};">
+          <strong>{dashboard['health_score']}</strong>
+          <span>health score</span>
         </div>
-        <button type="button" class="category-reset" data-category-filter="all">Show all findings</button>
+        <div>
+          <p class="section-kicker">Overview</p>
+          <h2>Vault health at a glance</h2>
+          <p class="overview-copy">The score is capped so repeated similar findings do not collapse large vaults to zero. Work through the action board below to improve it.</p>
+        </div>
       </div>
-      <div class="category-grid">{''.join(cards)}</div>
-    </section>
-    """
-
-
-def _category_card(
-    title: str,
-    category: str,
-    count: int,
-    severity: str,
-    description: str,
-    action: str,
-    unit: str = "affected",
-) -> str:
-    disabled = " disabled" if count == 0 and category != "all" else ""
-    return f"""
-    <article class="category-card severity-{escape(severity)}{disabled}">
-      <div class="category-card-top">
-        <span class="badge">{escape(severity)}</span>
-        <strong>{count}</strong>
-        <small>{escape(unit)}</small>
-      </div>
-      <h3>{escape(title)}</h3>
-      <p>{escape(description)}</p>
-      <em>{escape(action)}</em>
-      <button type="button" data-category-filter="{escape(category, quote=True)}">View affected</button>
-    </article>
-    """
-
-
-def _render_score_panel(report: AuditReport, dashboard: dict[str, int]) -> str:
-    chart = _render_severity_chart(report)
-    return f"""
-    <section class="score-panel">
-      <div class="score-orb" style="--score: {dashboard['health_score']};">
-        <strong>{dashboard['health_score']}</strong>
-        <span>health score</span>
-      </div>
-      <div class="score-copy">
-        <p class="section-kicker">Summary chart</p>
-        <h2>Risk at a glance</h2>
-        <p>The health score starts at 100 and subtracts capped penalties by severity: critical findings have the strongest impact, then high, medium, low, and obsolete. Penalties are capped so large vaults do not collapse to 0 just because many similar findings repeat.</p>
-        {chart}
+      <div class="overview-lower overview-lower--single">
+        <div>
+          <p class="overview-label">Severity mix</p>
+          {severity_chart}
+        </div>
       </div>
     </section>
     """
@@ -351,126 +181,150 @@ def _render_severity_chart(report: AuditReport) -> str:
     return f"<div class=\"severity-chart\">{''.join(rows)}</div>"
 
 
-def _summary_card(title: str, value: str, subtitle: str, severity: str | None = None) -> str:
-    severity_class = f" severity-{severity}" if severity else ""
-    return (
-        f"<article class=\"summary-card{severity_class}\">"
-        f"<span>{escape(title)}</span>"
-        f"<strong>{escape(value)}</strong>"
-        f"<small>{escape(subtitle)}</small>"
-        "</article>"
-    )
-
-
-def _render_action_plan(report: AuditReport, dashboard: dict[str, int]) -> str:
+def _render_action_plan(dashboard: dict[str, int]) -> str:
     actions: list[str] = []
-    if dashboard["breached"]:
-        actions.append(
-            f"Change {dashboard['breached']} breached password entries first.")
-    if dashboard["empty"]:
-        actions.append(f"Fix {dashboard['empty']} empty password entries.")
+    step = 0
+    # Card 1: Critical passwords (breached + empty)
+    critical_total = dashboard["breached"] + dashboard["empty"]
+    if critical_total:
+        parts: list[str] = []
+        if dashboard["breached"]:
+            parts.append(f"{_count(dashboard['breached'], 'breached entry', 'breached entries')}")
+        if dashboard["empty"]:
+            parts.append(f"{_count(dashboard['empty'], 'empty password')}")
+        step += 1
+        actions.append(_action_card(
+            str(step),
+            "Fix critical passwords",
+            " + ".join(parts),
+            "Breached or missing passwords",
+            "Rotate breached passwords first, then add passwords to empty entries. One unique-password change may fix many rows.",
+            "breached,empty",
+            "critical",
+        ))
+    # Card 2: Password reuse
     if dashboard["reuse"]:
-        actions.append(
-            f"Review {dashboard['reuse']} password reuse groups and rotate reused passwords.")
+        step += 1
+        actions.append(_action_card(
+            str(step),
+            "Break password reuse",
+            _count(dashboard["reuse"], "group"),
+            "Same secret elsewhere",
+            "Start with reused passwords that also appear in critical or high-risk services, then rerun the audit.",
+            "reuse",
+            "high",
+        ))
+    # Card 3: Duplicates
     if dashboard["safe_duplicate_removals"]:
-        actions.append(
-            f"Create a clean output to remove {dashboard['safe_duplicate_removals']} safe exact duplicates.")
-    if dashboard["domain_missing"]:
-        actions.append(
-            f"Review {dashboard['domain_missing']} missing-domain groups before deleting obsolete entries.")
-    if dashboard["insecure_http"]:
-        actions.append(
-            f"Update {dashboard['insecure_http']} entries that still use insecure http:// URLs.")
-    if dashboard["two_factor_not_stored"]:
-        actions.append(
-            f"Confirm 2FA on {dashboard['two_factor_not_stored']} TOTP-capable services not stored in this vault.")
-    if dashboard["service_known_breach"]:
-        actions.append(
-            f"Review {dashboard['service_known_breach']} services with public breach history.")
+        step += 1
+        actions.append(_action_card(
+            str(step),
+            "Create a clean copy",
+            f"{dashboard['safe_duplicate_removals']} removable",
+            "Safe exact duplicates",
+            "Use clean output after reviewing keepers. VaultSieve writes a new file and never edits the original export.",
+            "duplicate",
+            "high",
+        ))
+    # Card 4: Strengthen security (weak + insecure_http + 2FA)
+    medium_items: list[str] = []
+    medium_categories: list[str] = []
     if dashboard["weak"]:
-        actions.append(
-            "Replace weak passwords after critical and reuse issues are handled.")
+        medium_items.append(f"{_count(dashboard['weak'], 'weak password')}")
+        medium_categories.append("weak")
+    if dashboard["insecure_http"]:
+        medium_items.append(f"{_count(dashboard['insecure_http'], 'insecure URL')}")
+        medium_categories.append("insecure_http")
+    if dashboard["two_factor_not_stored"]:
+        medium_items.append(f"{_count(dashboard['two_factor_not_stored'], 'missing 2FA')}")
+        medium_categories.append("two_factor_not_stored")
+    if medium_items:
+        step += 1
+        actions.append(_action_card(
+            str(step),
+            "Strengthen security",
+            " · ".join(medium_items),
+            "Weak passwords, insecure URLs, and 2FA gaps",
+            "Upgrade weak passwords, switch URLs to HTTPS, and confirm 2FA is enabled where supported.",
+            ",".join(medium_categories),
+            "medium",
+        ))
+    # Card 5: Review services (domain_concentration + service_known_breach)
+    low_items: list[str] = []
+    low_categories: list[str] = []
+    if dashboard["domain_concentration"]:
+        low_items.append(f"{_count(dashboard['domain_concentration'], 'cluster')}")
+        low_categories.append("domain_concentration")
+    if dashboard["service_known_breach"]:
+        low_items.append(f"{_count(dashboard['service_known_breach'], 'breached service')}")
+        low_categories.append("service_known_breach")
+    if low_items:
+        step += 1
+        actions.append(_action_card(
+            str(step),
+            "Review services",
+            " · ".join(low_items),
+            "Account clusters and breach history",
+            "Trim domains with many accounts and check services with public breach history. Prioritize old or reused passwords.",
+            ",".join(low_categories),
+            "low",
+        ))
+    # Card 6: Obsolete services
+    if dashboard["domain_missing"]:
+        step += 1
+        actions.append(_action_card(
+            str(step),
+            "Confirm obsolete services",
+            _count(dashboard["domain_missing"], "group"),
+            f"{_count(dashboard['obsolete_candidates'], 'entry', 'entries')} affected",
+            "DNS did not resolve. Confirm manually before deleting; temporary DNS failures can happen.",
+            "domain_missing",
+            "obsolete",
+        ))
     if not actions:
-        actions.append("No immediate action required from the current checks.")
-    items = "".join(f"<li>{escape(action)}</li>" for action in actions)
+        actions.append(
+            "<article class=\"action-card\"><strong>No immediate action required</strong>"
+            "<p>The enabled checks did not find anything that needs attention.</p></article>"
+        )
     return f"""
     <section class="action-panel">
       <div>
         <p class="section-kicker">Recommended next steps</p>
-        <h2>What to do first</h2>
+        <h2>Action board</h2>
+        <p class="action-help">Work top to bottom. Use each button to filter the affected-entry table, fix a batch, then rerun the audit.</p>
       </div>
-      <ol>{items}</ol>
+      <div class="action-grid">{''.join(actions)}</div>
     </section>
     """
 
 
-def _render_inventory(dashboard: dict[str, int]) -> str:
-    items = [
-        ("Web entries", dashboard["web_entries"],
-         "Checked for resolvable domains when enabled"),
-        ("App entries", dashboard["app_entries"],
-         "Skipped from web domain checks"),
-        ("Passkeys", dashboard["passkeys"],
-         "Skipped from empty-password warnings"),
-        ("SSH keys", dashboard["ssh_keys"],
-         "Skipped from web password/domain checks"),
-        ("Ambiguous duplicates",
-         dashboard["ambiguous_duplicate_groups"], "Kept because no clear keeper exists"),
-    ]
-    cards = "".join(
-        f"<div class=\"summary-pill\"><span>{escape(title)}</span><strong>{value}</strong><small>{escape(subtitle)}</small></div>"
-        for title, value, subtitle in items
-    )
+def _action_card(
+    step: str,
+    title: str,
+    metric: str,
+    context: str,
+    guidance: str,
+    categories: str,
+    severity: str,
+) -> str:
     return f"""
-    <section class="inventory-panel">
-      <div>
-        <p class="section-kicker">Inventory</p>
-        <h2>What VaultSieve understood</h2>
+    <article class="action-card severity-{escape(severity)}">
+      <div class="action-card-top">
+        <span class="action-step">{escape(step)}</span>
+        <span class="badge">{escape(severity)}</span>
       </div>
-      <div class="summary-pills">{cards}</div>
-    </section>
-    """
-
-
-def _render_cleanup_plan(report: AuditReport, dashboard: dict[str, int]) -> str:
-    duplicate_plan = duplicate_cleanup_plan(report.credentials)
-    safe_groups = sum(1 for decision in duplicate_plan if decision.remove_ids)
-    cards = [
-        _cleanup_card(
-            "Safe duplicate removals",
-            dashboard["safe_duplicate_removals"],
-            f"{safe_groups} exact duplicate groups have a clear keeper.",
-        ),
-        _cleanup_card(
-            "Ambiguous duplicates kept",
-            dashboard["ambiguous_duplicate_groups"],
-            "Kept because metadata score is tied or no safe keeper exists.",
-        ),
-        _cleanup_card(
-            "Obsolete candidates",
-            dashboard["obsolete_candidates"],
-            "Domain-missing entries can be removed with clean mode obsolete or all.",
-        ),
-    ]
-    return f"""
-    <section class="cleanup-panel">
-      <div>
-        <p class="section-kicker">Cleanup plan</p>
-        <h2>What can be cleaned safely</h2>
-      </div>
-      <div class="cleanup-grid">{''.join(cards)}</div>
-    </section>
-    """
-
-
-def _cleanup_card(title: str, value: int, description: str) -> str:
-    return f"""
-    <article class="cleanup-card">
-      <span>{escape(title)}</span>
-      <strong>{value}</strong>
-      <small>{escape(description)}</small>
+      <h3>{escape(title)}</h3>
+      <strong>{escape(metric)}</strong>
+      <small>{escape(context)}</small>
+      <p>{escape(guidance)}</p>
+      <button type="button" data-category-filter="{escape(categories, quote=True)}">Show affected</button>
     </article>
     """
+
+
+def _count(count: int, singular: str, plural: str | None = None) -> str:
+    noun = singular if count == 1 else plural or f"{singular}s"
+    return f"{count} {noun}"
 
 
 def _render_attribution(report: AuditReport) -> str:
@@ -484,10 +338,10 @@ def _render_attribution(report: AuditReport) -> str:
     return " " + " ".join(parts) if parts else ""
 
 
-def _render_filters(findings: list[Finding]) -> str:
+def _render_filters(findings: list[Finding], initial_severity: str = "all") -> str:
     categories = sorted({finding.category for finding in findings})
     severity_options = ''.join(
-        f'<option value="{escape(severity)}">{escape(severity.title())}</option>'
+        f'<option value="{escape(severity)}"{" selected" if severity == initial_severity else ""}>{escape(severity.title())}</option>'
         for severity in SEVERITY_LABELS
     )
     category_options = ''.join(
@@ -578,206 +432,228 @@ def _render_styles() -> str:
     return """
 :root {
   color-scheme: light;
-  --page: #fafafa;
+  --page: #f8f9fb;
   --panel: #ffffff;
-  --panel-soft: #f6f7f7;
-  --ink: #111827;
+  --panel-soft: #f4f5f7;
+  --ink: #0f1729;
+  --ink-secondary: #344054;
   --muted: #667085;
   --subtle: #98a2b3;
-  --line: #dfe4e8;
-  --line-strong: #cbd5dc;
-  --accent: #0f766e;
+  --line: #e4e7ec;
+  --line-strong: #c8cfd8;
+  --accent: #0d9488;
+  --accent-hover: #0f766e;
   --accent-soft: #e6f5f2;
   --critical: #dc2626;
-  --critical-soft: #fee2e2;
+  --critical-soft: #fef2f2;
   --high: #ea580c;
-  --high-soft: #ffedd5;
+  --high-soft: #fff7ed;
   --medium: #ca8a04;
-  --medium-soft: #fef3c7;
+  --medium-soft: #fefce8;
   --low: #2563eb;
-  --low-soft: #dbeafe;
+  --low-soft: #eff6ff;
   --obsolete: #6b7280;
   --obsolete-soft: #f3f4f6;
-  --dot: rgba(15, 23, 42, 0.14);
-  --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-  --radius: 16px;
+  --shadow-sm: 0 1px 3px rgba(15,23,42,.06);
+  --shadow: 0 4px 24px rgba(15,23,42,.07);
+  --shadow-lg: 0 12px 40px rgba(15,23,42,.1);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --transition: 0.18s ease;
 }
-* { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body {
-  margin: 0;
-  min-height: 100vh;
+  margin: 0; min-height: 100vh;
   background:
-    radial-gradient(circle, var(--dot) 1px, transparent 1.4px),
-    linear-gradient(180deg, rgba(240, 253, 250, 0.86), rgba(250, 250, 250, 0.9) 34rem),
-    var(--page);
-  background-size: 24px 24px, auto, auto;
+    radial-gradient(circle, rgba(15,23,42,.1) 1px, transparent 1.4px),
+    linear-gradient(170deg, #eef7f5 0%, var(--page) 28%, var(--page) 100%);
+  background-size: 22px 22px, auto;
   color: var(--ink);
-  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
-.shell { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; padding: 2rem 0 2.5rem; }
+
+/* === Shell === */
+.shell { width: min(1140px, calc(100% - 2.5rem)); margin: 0 auto; padding: 2.5rem 0 3rem; display: grid; gap: 1.25rem; }
+
+/* === Hero === */
 .hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
-  gap: 1.25rem;
-  align-items: end;
-  border: 1px solid var(--line);
-  border-radius: calc(var(--radius) + 6px);
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: var(--shadow);
-  padding: 1.35rem;
-  margin-bottom: 1rem;
-  backdrop-filter: blur(8px);
+  display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; align-items: end;
+  border: 1px solid var(--line); border-radius: calc(var(--radius) + 4px);
+  background: var(--panel); box-shadow: var(--shadow);
+  padding: 1.75rem 1.5rem;
 }
-.brand-lockup { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 1.25rem; }
-.brand-icon { width: 2.55rem; height: 2.55rem; object-fit: contain; border-radius: 0.7rem; background: var(--accent-soft); border: 1px solid rgba(15, 118, 110, 0.22); padding: 0.32rem; }
-.brand-name { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
-.hero h1 { font-size: clamp(2rem, 5vw, 4.15rem); line-height: 0.96; margin: 0; letter-spacing: -0.06em; max-width: 680px; }
-.eyebrow { display: inline-flex; margin: 0 0 0.5rem; color: var(--accent); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.muted { color: var(--muted); max-width: 46rem; font-size: 1rem; line-height: 1.6; margin-bottom: 0; }
-.meta-card, .summary-card, .notice, .filters, .finding-card, .empty-state {
-  background: var(--panel);
-  border: 1px solid var(--line);
+.brand-lockup { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
+.brand-icon { width: 2.2rem; height: 2.2rem; object-fit: contain; border-radius: 0.55rem; padding: 0; display: block; }
+.brand-name { font-size: 0.95rem; font-weight: 700; letter-spacing: -0.01em; }
+.eyebrow { display: inline-block; margin: 0 0 0.35rem; color: var(--accent); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.hero h2 { margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.035em; line-height: 1.15; }
+.muted { color: var(--muted); max-width: 44rem; font-size: 0.88rem; line-height: 1.55; margin: 0; }
+.meta-card { border-radius: var(--radius-sm); padding: 0.85rem 1rem; display: grid; gap: 0.3rem; align-content: end; overflow-wrap: anywhere; background: var(--ink); color: white; min-width: 240px; }
+.meta-card span { color: #94a3b8; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.meta-card strong { font-size: 0.85rem; font-weight: 600; }
+
+/* === Section headings === */
+.section-kicker { margin: 0 0 0.2rem; color: var(--accent); font-size: 0.68rem; font-weight: 750; letter-spacing: 0.07em; text-transform: uppercase; }
+
+/* === Overview === */
+.overview-panel {
+  border: 1px solid var(--line); border-radius: calc(var(--radius) + 4px);
+  background: var(--panel); box-shadow: var(--shadow-sm);
+  padding: 1.5rem; display: grid; gap: 1.35rem;
 }
-.meta-card { border-radius: var(--radius); padding: 1rem; display: grid; gap: 0.42rem; align-content: end; overflow-wrap: anywhere; background: #0f172a; color: white; }
-.meta-card span, .summary-card span, .summary-card small { color: var(--muted); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
-.meta-card span { color: #94a3b8; }
-.meta-card strong { font-size: 0.92rem; font-weight: 600; }
-.summary-grid { display: grid; grid-template-columns: minmax(190px, 0.38fr) 1fr; gap: 1rem; align-items: center; margin: 1rem 0; border: 1px solid var(--line); border-radius: calc(var(--radius) + 4px); background: rgba(255, 255, 255, 0.94); padding: 1rem; }
-.summary-grid h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.04em; }
-.summary-pills { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.55rem; }
-.summary-pill { border: 1px solid var(--line); border-radius: 0.9rem; background: #fbfcfc; padding: 0.68rem 0.72rem; display: grid; gap: 0.08rem; min-width: 0; }
-.summary-pill span, .summary-pill small { color: var(--muted); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.summary-pill strong { color: var(--ink); font-size: 1.45rem; line-height: 1; letter-spacing: -0.06em; }
-.inventory-pill { min-height: 118px; align-content: space-between; padding: 0.9rem; }
-.inventory-pill span { white-space: normal; }
-.inventory-pill small { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.3; text-transform: none; letter-spacing: 0; font-weight: 600; }
-.inventory-pill strong { font-size: 1.85rem; }
-.summary-card { min-height: 112px; padding: 0.95rem; display: grid; gap: 0.14rem; align-content: space-between; border-radius: var(--radius); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
-.summary-card strong { font-size: 2.25rem; line-height: 1; letter-spacing: -0.05em; }
-.summary-card.severity-critical strong { color: var(--critical); }
-.summary-card.severity-high strong { color: var(--high); }
-.summary-card.severity-medium strong { color: var(--medium); }
-.summary-card.severity-low strong { color: var(--low); }
-.summary-card.severity-obsolete strong { color: var(--obsolete); }
-.action-panel, .score-panel, .cleanup-panel { display: grid; grid-template-columns: minmax(220px, 0.55fr) 1.45fr; gap: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, 0.94); padding: 1rem; margin: 1rem 0; }
-.inventory-panel { display: grid; grid-template-columns: minmax(190px, 0.38fr) 1fr; gap: 1rem; align-items: center; margin: 1rem 0; border: 1px solid var(--line); border-radius: calc(var(--radius) + 4px); background: rgba(255, 255, 255, 0.94); padding: 1rem; }
-.section-kicker { margin: 0 0 0.3rem; color: var(--accent); font-size: 0.75rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
-.action-panel { margin-top: 1.25rem; background: #fbfcfc; }
-.action-panel h2, .inventory-panel h2, .score-panel h2, .cleanup-panel h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.04em; }
-.action-panel h2 { font-size: 1.05rem; }
-.action-panel .section-kicker { font-size: 0.68rem; }
-.action-panel ol { margin: 0; padding-left: 1.15rem; display: grid; gap: 0.36rem; color: #344054; line-height: 1.45; font-size: 0.9rem; }
-.action-panel li::marker { color: var(--accent); font-weight: 800; }
-.cleanup-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.7rem; }
-.cleanup-card { border: 1px solid var(--line); border-radius: 0.9rem; background: #fbfcfc; padding: 0.9rem; display: grid; gap: 0.25rem; }
-.cleanup-card span { color: var(--muted); font-size: 0.7rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.04em; }
-.cleanup-card strong { font-size: 2rem; letter-spacing: -0.06em; }
-.cleanup-card small { color: #475467; line-height: 1.35; }
-.score-panel { grid-template-columns: minmax(160px, 220px) 1fr; align-items: center; }
-.score-orb { width: 9.2rem; height: 9.2rem; border-radius: 999px; display: grid; place-items: center; align-content: center; justify-self: center; background: conic-gradient(var(--accent) calc(var(--score) * 1%), #e8eef0 0); position: relative; color: var(--ink); }
-.score-orb::after { content: ""; position: absolute; inset: 0.7rem; border-radius: inherit; background: white; border: 1px solid var(--line); }
+.overview-main { display: grid; grid-template-columns: auto 1fr; gap: 1.5rem; align-items: center; }
+.overview-main h2 { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em; }
+.overview-copy { color: var(--ink-secondary); line-height: 1.55; margin: 0.3rem 0 0; font-size: 0.88rem; max-width: 64rem; }
+.overview-lower { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+.overview-lower--single { grid-template-columns: 1fr; }
+.overview-label { margin: 0 0 0.5rem; color: var(--muted); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* === Score orb === */
+.score-orb {
+  width: 8rem; height: 8rem; border-radius: 999px;
+  display: grid; place-items: center; align-content: center; justify-self: center;
+  background: conic-gradient(var(--accent) calc(var(--score) * 1%), var(--line) 0);
+  position: relative; color: var(--ink);
+}
+.score-orb::after { content: ""; position: absolute; inset: 0.55rem; border-radius: inherit; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
 .score-orb strong, .score-orb span { position: relative; z-index: 1; }
-.score-orb strong { font-size: 2.4rem; line-height: 1; letter-spacing: -0.07em; }
-.score-orb span { color: var(--muted); font-size: 0.72rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.04em; }
-.score-copy p { color: #475467; line-height: 1.55; margin: 0.45rem 0 0.9rem; max-width: 60rem; }
-.severity-chart { display: grid; gap: 0.5rem; }
-.chart-row { display: grid; grid-template-columns: 5.4rem minmax(80px, 1fr) 2.3rem; gap: 0.65rem; align-items: center; font-size: 0.82rem; color: var(--muted); }
+.score-orb strong { font-size: 2.1rem; line-height: 1; letter-spacing: -0.06em; font-weight: 800; }
+.score-orb span { color: var(--muted); font-size: 0.65rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* === Severity chart === */
+.severity-chart { display: grid; gap: 0.45rem; }
+.chart-row { display: grid; grid-template-columns: 5rem 1fr 2rem; gap: 0.6rem; align-items: center; font-size: 0.8rem; color: var(--muted); }
 .chart-row > span { font-weight: 700; }
-.chart-row > strong { color: var(--ink); text-align: right; }
-.chart-track { height: 0.55rem; border-radius: 999px; background: #eef2f4; overflow: hidden; }
-.chart-track i { display: block; height: 100%; border-radius: inherit; background: var(--obsolete); }
+.chart-row > strong { color: var(--ink); text-align: right; font-size: 0.82rem; }
+.chart-track { height: 0.5rem; border-radius: 999px; background: var(--panel-soft); overflow: hidden; }
+.chart-track i { display: block; height: 100%; border-radius: inherit; background: var(--obsolete); transition: width 0.6s ease; }
 .chart-row.severity-critical .chart-track i { background: var(--critical); }
 .chart-row.severity-high .chart-track i { background: var(--high); }
 .chart-row.severity-medium .chart-track i { background: var(--medium); }
 .chart-row.severity-low .chart-track i { background: var(--low); }
-.category-dashboard { border: 1px solid var(--line); border-radius: calc(var(--radius) + 4px); background: rgba(255, 255, 255, 0.94); padding: 1rem; margin: 1rem 0; }
-.category-dashboard-heading, .affected-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: end; margin-bottom: 0.9rem; }
-.category-dashboard-heading h2, .affected-heading h2 { margin: 0; font-size: 1.2rem; letter-spacing: -0.04em; }
-.affected-heading { margin: 1.1rem 0 0.6rem; }
-.affected-heading p { margin: 0; color: var(--muted); font-size: 0.9rem; }
-.category-reset { width: auto; }
-.category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0.7rem; align-items: stretch; }
-.category-card { border: 1px solid var(--line); border-radius: 0.95rem; background: #ffffff; padding: 0.9rem; display: grid; grid-template-rows: auto auto auto auto 1fr; gap: 0.46rem; align-content: start; min-height: 220px; }
-.category-card.disabled { opacity: 0.58; }
-.category-card-top { display: grid; grid-template-columns: auto 1fr auto; gap: 0.55rem; align-items: center; }
-.category-card-top strong { justify-self: end; font-size: 1.55rem; line-height: 1; letter-spacing: -0.06em; }
-.category-card-top small { color: var(--muted); font-size: 0.66rem; font-weight: 700; text-transform: uppercase; }
-.category-card h3 { margin: 0; font-size: 0.92rem; }
-.category-card p { margin: 0; color: #475467; line-height: 1.35; font-size: 0.82rem; }
-.category-card em { color: var(--ink); font-style: normal; font-size: 0.78rem; font-weight: 650; }
-.category-card button { align-self: end; margin-top: 0.25rem; padding: 0.56rem 0.65rem; font-size: 0.8rem; }
-.notice { border-radius: 0.8rem; padding: 0.55rem 0.7rem; background: transparent; color: var(--muted); line-height: 1.45; font-size: 0.78rem; margin-top: 0.85rem; }
-.notice strong { color: var(--ink); }
-.notice a { color: var(--accent); font-weight: 650; }
-.filters { margin: 1rem 0 0; padding: 0.8rem; display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 0.65rem; align-items: end; background: rgba(255, 255, 255, 0.92); position: sticky; top: 0.75rem; z-index: 5; border-radius: var(--radius); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08); backdrop-filter: blur(10px); }
-.active-filter { color: var(--muted); margin: 0.75rem 0 0; font-size: 0.86rem; }
-label { color: var(--muted); display: grid; gap: 0.35rem; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.02em; }
-input, select, button { width: 100%; border: 1px solid var(--line-strong); border-radius: 0.7rem; background: var(--panel); color: var(--ink); padding: 0.68rem 0.75rem; font: inherit; }
+
+/* === Action panel === */
+.action-panel {
+  display: grid; grid-template-columns: minmax(200px, 0.38fr) 1fr; gap: 1.25rem;
+  border: 1px solid var(--line); border-radius: calc(var(--radius) + 4px);
+  background: var(--panel-soft); box-shadow: var(--shadow-sm);
+  padding: 1.5rem; align-items: start;
+}
+.action-panel h2 { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em; }
+.action-panel .section-kicker { font-size: 0.65rem; }
+.action-help { color: var(--ink-secondary); line-height: 1.5; margin: 0.4rem 0 0; font-size: 0.85rem; }
+.action-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0.6rem; }
+.action-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm); background: var(--panel);
+  padding: 0.85rem; display: grid; gap: 0.3rem; align-content: start; min-height: 195px;
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+.action-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.action-card-top { display: flex; justify-content: space-between; gap: 0.5rem; align-items: center; }
+.action-step { width: 1.4rem; height: 1.4rem; border-radius: 999px; display: inline-grid; place-items: center; background: var(--ink); color: white; font-size: 0.7rem; font-weight: 800; }
+.action-card h3 { margin: 0; font-size: 0.88rem; font-weight: 700; letter-spacing: -0.015em; }
+.action-card strong { font-size: 1.3rem; line-height: 1; letter-spacing: -0.05em; font-weight: 800; }
+.action-card small { color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; font-size: 0.65rem; }
+.action-card p { margin: 0; color: var(--ink-secondary); line-height: 1.4; font-size: 0.78rem; }
+.action-card button {
+  align-self: end; margin-top: 0.25rem; padding: 0.45rem 0.6rem; font-size: 0.76rem;
+  background: var(--ink); color: white; border-color: var(--ink);
+  border-radius: 0.55rem; font-weight: 700;
+}
+.action-card button:hover { background: #1e293b; border-color: #1e293b; }
+
+/* === Affected heading === */
+.affected-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: end; }
+.affected-heading h2 { margin: 0; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.03em; }
+.affected-heading p { margin: 0; color: var(--muted); font-size: 0.85rem; }
+
+/* === Filters === */
+.filters {
+  padding: 0.75rem 1rem; display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 0.6rem; align-items: end;
+  background: rgba(255,255,255,.92); position: sticky; top: 0; z-index: 5;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); backdrop-filter: blur(12px);
+}
+.active-filter { color: var(--muted); margin: 0; font-size: 0.82rem; }
+label { color: var(--muted); display: grid; gap: 0.28rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.02em; }
+input, select, button { width: 100%; border: 1px solid var(--line-strong); border-radius: 0.55rem; background: var(--panel); color: var(--ink); padding: 0.55rem 0.65rem; font: inherit; font-size: 0.86rem; transition: border-color var(--transition), box-shadow var(--transition), background var(--transition); }
 input::placeholder { color: var(--subtle); }
-button { cursor: pointer; font-size: 0.86rem; font-weight: 650; white-space: nowrap; }
+button { cursor: pointer; font-size: 0.82rem; font-weight: 700; white-space: nowrap; }
 button:hover { background: var(--panel-soft); }
 button:active { transform: translateY(1px); }
-button:focus, input:focus, select:focus { outline: 3px solid rgba(15, 118, 110, 0.18); border-color: var(--accent); }
-.toolbar-result { color: var(--muted); margin: 0.75rem 0; font-size: 0.9rem; }
-#visible-count { color: var(--ink); font-weight: 700; }
-.findings {
-  max-height: min(760px, 64vh);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 0.1rem 0.55rem 0.1rem 0;
-  scrollbar-color: var(--line-strong) transparent;
-}
-.findings-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, 0.94); }
-.findings-table { width: 100%; border-collapse: collapse; min-width: 920px; font-size: 0.86rem; }
-.findings-table th { position: sticky; top: 0; z-index: 1; text-align: left; color: var(--muted); background: #f8fafc; border-bottom: 1px solid var(--line); padding: 0.66rem 0.72rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; }
-.findings-table td { vertical-align: top; border-top: 1px solid var(--line); padding: 0.72rem; }
-.findings-table tbody tr:first-child td { border-top: 0; }
-.findings-table th:nth-child(2), .findings-table td:nth-child(2) { min-width: 150px; }
-.finding-row:hover td { background: #fbfcfc; }
-.finding-row.severity-critical:hover td { background: #feecec; }
-.issue-cell { min-width: 280px; }
-.issue-cell strong { display: block; line-height: 1.35; }
-.issue-cell p { margin: 0.25rem 0 0; color: #475467; line-height: 1.4; }
-.count-cell { text-align: center; font-weight: 750; font-size: 1rem; }
-.affected-cell { min-width: 300px; display: grid; gap: 0.36rem; }
-.affected-cell span { display: block; line-height: 1.35; }
-.affected-cell small, .affected-cell em { color: var(--muted); font-style: normal; overflow-wrap: anywhere; }
-.finding-card { overflow: hidden; border-radius: var(--radius); background: rgba(255, 255, 255, 0.94); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
-.finding-card.severity-critical { border-left-color: var(--critical); }
-.finding-card.severity-high { border-left-color: var(--high); }
-.finding-card.severity-medium { border-left-color: var(--medium); }
-.finding-card.severity-low { border-left-color: var(--low); }
-.finding-card.severity-obsolete { border-left-color: var(--obsolete); }
-.finding-card { border-left: 4px solid transparent; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+#clear-filters { background: transparent; border-color: var(--line); color: var(--muted); }
+#clear-filters:hover { background: var(--panel-soft); color: var(--ink); }
 
-.finding-header { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 0.7rem; align-items: center; padding: 0.9rem 1rem; }
-.finding-header strong { min-width: 0; font-size: 0.96rem; font-weight: 650; line-height: 1.45; }
-.badge { border-radius: 999px; padding: 0.22rem 0.55rem; font-size: 0.72rem; font-weight: 750; text-transform: capitalize; background: var(--obsolete-soft); color: var(--obsolete); }
+/* === Results bar === */
+.toolbar-result { color: var(--muted); margin: 0; font-size: 0.85rem; }
+#visible-count { color: var(--ink); font-weight: 800; }
+
+/* === Findings table === */
+.findings {
+  max-height: min(780px, 68vh);
+  overflow-y: auto; overscroll-behavior: contain;
+  padding-right: 0.25rem;
+  scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent;
+}
+.findings-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow-sm); }
+.findings-table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 0.84rem; }
+.findings-table th {
+  position: sticky; top: 0; z-index: 1; text-align: left;
+  color: var(--muted); background: var(--panel-soft);
+  border-bottom: 1px solid var(--line); padding: 0.6rem 0.75rem;
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.findings-table td { vertical-align: top; border-top: 1px solid var(--line); padding: 0.65rem 0.75rem; transition: background var(--transition); }
+.findings-table tbody tr:first-child td { border-top: 0; }
+.findings-table th:nth-child(2), .findings-table td:nth-child(2) { min-width: 140px; }
+.finding-row:hover td { background: var(--panel-soft); }
+.finding-row.severity-critical:hover td { background: var(--critical-soft); }
+.finding-row.severity-high:hover td { background: var(--high-soft); }
+.issue-cell { min-width: 260px; }
+.issue-cell strong { display: block; line-height: 1.35; font-weight: 650; }
+.issue-cell p { margin: 0.2rem 0 0; color: var(--ink-secondary); line-height: 1.45; font-size: 0.82rem; }
+.count-cell { text-align: center; font-weight: 800; font-size: 0.95rem; }
+.affected-cell { min-width: 280px; display: grid; gap: 0.3rem; }
+.affected-cell span { display: block; line-height: 1.35; }
+.affected-cell small, .affected-cell em { color: var(--muted); font-style: normal; overflow-wrap: anywhere; font-size: 0.8rem; }
+
+/* === Badges & pills === */
+.badge { border-radius: 999px; padding: 0.18rem 0.5rem; font-size: 0.68rem; font-weight: 750; text-transform: capitalize; background: var(--obsolete-soft); color: var(--obsolete); }
 .severity-critical .badge { background: var(--critical-soft); color: var(--critical); }
 .severity-high .badge { background: var(--high-soft); color: var(--high); }
 .severity-medium .badge { background: var(--medium-soft); color: #854d0e; }
 .severity-low .badge { background: var(--low-soft); color: var(--low); }
 .severity-obsolete .badge { background: var(--obsolete-soft); color: var(--obsolete); }
-.category { color: var(--muted); text-transform: capitalize; font-size: 0.82rem; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.5rem; display: inline-block; white-space: nowrap; }
-.finding-body { border-top: 1px solid var(--line); padding: 1rem; display: grid; grid-template-columns: minmax(240px, 0.8fr) 1.2fr; gap: 1rem; background: #fbfcfc; }
-.finding-body h3 { margin: 0 0 0.4rem; font-size: 0.76rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-.finding-body p { margin: 0; color: #475467; line-height: 1.6; }
-.credential-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
-.credential-list li { background: var(--panel); border: 1px solid var(--line); border-radius: 0.8rem; padding: 0.7rem; display: grid; gap: 0.22rem; }
-.credential-list strong { font-weight: 650; }
-.credential-list span, .credential-list small { color: var(--muted); overflow-wrap: anywhere; }
-code { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-.empty-state { border-radius: var(--radius); padding: 2rem; text-align: center; color: var(--muted); }
+.category { color: var(--muted); text-transform: capitalize; font-size: 0.78rem; background: var(--panel-soft); border-radius: 999px; padding: 0.15rem 0.45rem; display: inline-block; white-space: nowrap; }
+
+/* === Utilities === */
+code { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.82em; }
+.notice { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.65rem 0.85rem; background: var(--panel-soft); color: var(--muted); line-height: 1.5; font-size: 0.78rem; }
+.notice strong { color: var(--ink); }
+.notice a { color: var(--accent); font-weight: 650; text-decoration: none; }
+.notice a:hover { text-decoration: underline; }
+.empty-state { border-radius: var(--radius); padding: 2.5rem; text-align: center; color: var(--muted); background: var(--panel); }
 .is-hidden { display: none; }
+
+/* === Responsive === */
 @media (max-width: 900px) {
-  .hero, .finding-body, .action-panel, .inventory-panel, .score-panel, .cleanup-panel { grid-template-columns: 1fr; }
-  .cleanup-grid { grid-template-columns: 1fr; }
-  .summary-grid { grid-template-columns: 1fr; }
-  .summary-pills { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .category-dashboard-heading, .affected-heading { display: grid; align-items: start; }
-  .filters { grid-template-columns: 1fr; position: static; }
+  .hero, .action-panel { grid-template-columns: 1fr; }
+  .overview-main, .overview-lower { grid-template-columns: 1fr; }
+  .affected-heading { display: grid; align-items: start; }
+  .filters { grid-template-columns: 1fr; position: static; box-shadow: var(--shadow-sm); }
   .findings { max-height: none; overflow: visible; padding-right: 0; }
-  .finding-header { grid-template-columns: 1fr; }
+  .category-guide { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .shell { width: calc(100% - 1.5rem); padding: 1.5rem 0 2rem; }
+  .hero { padding: 1.25rem; }
+  .category-guide { grid-template-columns: 1fr; }
+  .action-grid { grid-template-columns: 1fr; }
 }
 """
 
@@ -797,12 +673,14 @@ function applyFilters() {
   const query = searchInput.value.trim().toLowerCase();
   const severity = severityFilter.value;
   const category = categoryFilter.value;
+  const multi = categoryFilter.dataset.multi;
+  const multiSet = multi ? new Set(multi.split(',')) : null;
   let count = 0;
 
   for (const card of cards) {
     const matchesQuery = !query || card.dataset.search.includes(query);
     const matchesSeverity = severity === 'all' || card.dataset.severity === severity;
-    const matchesCategory = category === 'all' || card.dataset.category === category;
+    const matchesCategory = multiSet ? multiSet.has(card.dataset.category) : (category === 'all' || card.dataset.category === category);
     const visible = matchesQuery && matchesSeverity && matchesCategory;
     card.classList.toggle('is-hidden', !visible);
     if (visible) count += 1;
@@ -810,23 +688,32 @@ function applyFilters() {
   visibleCount.textContent = count;
   const parts = [];
   if (severity !== 'all') parts.push(`severity: ${severity}`);
-  if (category !== 'all') parts.push(`category: ${category.replaceAll('_', ' ')}`);
+  if (multiSet) parts.push(`categories: ${[...multiSet].join(', ').replaceAll('_', ' ')}`);
+  else if (category !== 'all') parts.push(`category: ${category.replaceAll('_', ' ')}`);
   if (query) parts.push(`search: ${query}`);
   activeFilter.textContent = parts.length ? `Showing ${parts.join(' · ')}` : 'Showing all findings';
 }
 
 searchInput.addEventListener('input', applyFilters);
-severityFilter.addEventListener('change', applyFilters);
-categoryFilter.addEventListener('change', applyFilters);
+severityFilter.addEventListener('change', () => { delete categoryFilter.dataset.multi; applyFilters(); });
+categoryFilter.addEventListener('change', () => { delete categoryFilter.dataset.multi; applyFilters(); });
 clearFiltersButton.addEventListener('click', () => {
   searchInput.value = '';
   severityFilter.value = 'all';
   categoryFilter.value = 'all';
+  delete categoryFilter.dataset.multi;
   applyFilters();
 });
 for (const button of categoryButtons) {
   button.addEventListener('click', () => {
-    categoryFilter.value = button.dataset.categoryFilter;
+    const cats = button.dataset.categoryFilter;
+    if (cats.includes(',')) {
+      categoryFilter.value = 'all';
+      categoryFilter.dataset.multi = cats;
+    } else {
+      categoryFilter.value = cats;
+      delete categoryFilter.dataset.multi;
+    }
     severityFilter.value = 'all';
     searchInput.value = '';
     applyFilters();

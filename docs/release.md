@@ -8,7 +8,8 @@ This repo is currently at preview version `0.1.0a1`.
 - Update `CHANGELOG.md`.
 - Confirm `LICENSE` exists and matches `pyproject.toml` metadata.
 - Run tests: `.venv/bin/python -m pytest`.
-- Install build tools if needed: `.venv/bin/python -m pip install build twine`.
+- Run lint: `.venv/bin/python -m ruff check .`.
+- Install dev tools if needed: `.venv/bin/python -m pip install -e '.[dev]'`.
 - Build package: `.venv/bin/python -m build`.
 - Check package metadata: `.venv/bin/python -m twine check dist/*`.
 - Confirm package data includes logo assets used by HTML reports.

@@ -77,7 +77,7 @@ The local `./vaultsieve` launcher delegates to `.venv/bin/vaultsieve` and prints
 Before publishing to package indexes:
 
 ```bash
-.venv/bin/python -m pip install build twine
+.venv/bin/python -m pip install -e '.[dev]'
 .venv/bin/python -m build
 .venv/bin/python -m twine check dist/*
 ```

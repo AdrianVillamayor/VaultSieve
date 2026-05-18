@@ -9,7 +9,14 @@ from rich.prompt import Confirm, Prompt
 from vaultsieve.assets import copy_logo_assets
 from vaultsieve.audit import run_audit
 from vaultsieve.cleaner import write_clean_output
-from vaultsieve.config import AppConfig, config_path, load_config, parse_output_formats, reset_config, save_config
+from vaultsieve.config import (
+    AppConfig,
+    config_path,
+    load_config,
+    parse_output_formats,
+    reset_config,
+    save_config,
+)
 from vaultsieve.errors import VaultSieveError
 from vaultsieve.models import AuditOptions, InputFormat
 from vaultsieve.progress import AuditProgress
@@ -47,7 +54,6 @@ def run_tui() -> int:
     except VaultSieveError as err:
         console.print(f"[red]Error:[/red] {err}")
         return 1
-    return 0
 
 
 def _run_guided_audit(console: Console) -> None:
@@ -57,10 +63,11 @@ def _run_guided_audit(console: Console) -> None:
         console.print("Cancelled.")
         return
     input_path = Path(input_value)
+    guessed_format = "csv" if input_path.suffix.lower() == ".csv" else "bitwarden"
     input_format: InputFormat = Prompt.ask(
         "Input format",
         choices=["bitwarden", "csv"],
-        default="bitwarden",
+        default=guessed_format,
     )
     check_breaches = Confirm.ask(
         "Check Have I Been Pwned? This sends only SHA-1 hash prefixes",
@@ -130,6 +137,7 @@ def _run_guided_audit(console: Console) -> None:
                 raise VaultSieveError(f"Cannot write reports to: {report_dir}") from err
             report_progress.update("Reports complete")
         console.print(f"Reports written to {report_dir}")
+        console.print("Treat reports as sensitive: they exclude passwords but can include account identifiers.")
         if "html" in config.output_formats:
             console.print(f"Open HTML report: {html_path.resolve().as_uri()}")
 
@@ -229,7 +237,7 @@ def _run_first_use_settings(console: Console) -> None:
             "Check Have I Been Pwned by default? This sends only SHA-1 hash prefixes",
             default=False,
         ),
-        check_domains=Confirm.ask("Check credential domains by default?", default=True),
+        check_domains=Confirm.ask("Check credential domains by default?", default=False),
         check_2fa=Confirm.ask("Check 2FA availability using 2fa.directory by default?", default=False),
         check_known_breaches=Confirm.ask("Check known breached services using the public HIBP catalogue by default?", default=False),
         hibp_workers=_ask_positive_int("HIBP workers", 4),

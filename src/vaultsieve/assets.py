@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import sysconfig
 from pathlib import Path
 
 from vaultsieve.errors import VaultSieveError
@@ -9,7 +10,10 @@ LOGO_FILES = ("vaultsieve-icon.svg", "vaultsieve-wordmark.svg")
 
 
 def logo_assets_dir() -> Path:
-    return Path(__file__).resolve().parents[2] / "assets" / "logos"
+    checkout_assets = Path(__file__).resolve().parents[2] / "assets" / "logos"
+    if checkout_assets.exists():
+        return checkout_assets
+    return Path(sysconfig.get_path("data")) / "assets" / "logos"
 
 
 def copy_logo_assets(output_dir: Path) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 import urllib.request
 from collections import defaultdict
@@ -11,6 +12,8 @@ from typing import Any
 from vaultsieve.analyzers.domains import extract_domain
 from vaultsieve.config import config_path
 from vaultsieve.models import Credential, Finding
+
+logger = logging.getLogger(__name__)
 
 KnownBreachesLookupFn = Callable[[], dict[str, list[dict[str, Any]]]]
 
@@ -38,7 +41,8 @@ def load_known_breaches(
         )
         with urllib.request.urlopen(request, timeout=15) as response:
             data = json.loads(response.read().decode("utf-8"))
-    except Exception:
+    except Exception as exc:
+        logger.warning("HIBP breach catalogue fetch failed: %s", exc)
         if cached is not None:
             return cached
         raise

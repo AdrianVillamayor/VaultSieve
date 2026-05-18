@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 import socket
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
 
 from vaultsieve.models import Credential, Finding
+
+logger = logging.getLogger(__name__)
 
 DomainLookupFn = Callable[[str], bool]
 ProgressFn = Callable[[str], None]
@@ -69,6 +72,7 @@ def analyze_domains(
             try:
                 exists_by_domain[domain] = future.result()
             except Exception:
+                logger.warning("DNS lookup failed for %s, assuming domain exists", domain)
                 exists_by_domain[domain] = True
             if progress is not None:
                 progress(domain)

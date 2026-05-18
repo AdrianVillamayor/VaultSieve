@@ -10,7 +10,7 @@ Vault exports and generated reports are sensitive. VaultSieve does not modify th
 
 ## Have I Been Pwned Password Checks
 
-- Disabled unless `check_breaches` or `--check-breaches` is enabled.
+- Disabled unless `check_breaches` is enabled in config or `--check-breaches` is passed.
 - VaultSieve hashes each unique password locally with SHA-1.
 - Only the first five SHA-1 characters are sent to `api.pwnedpasswords.com`.
 - The full password and full hash are never sent.
@@ -19,7 +19,7 @@ Vault exports and generated reports are sensitive. VaultSieve does not modify th
 
 ## Known Breached Services
 
-- Disabled unless `check_known_breaches` or `--check-known-breaches` is enabled.
+- Disabled unless `check_known_breaches` is enabled in config or `--check-known-breaches` is passed.
 - VaultSieve downloads the public HIBP breach catalogue and caches it locally.
 - Matching happens locally against saved web domains.
 - Emails, usernames, and passwords are not sent.
@@ -27,7 +27,7 @@ Vault exports and generated reports are sensitive. VaultSieve does not modify th
 
 ## 2FA Directory Checks
 
-- Disabled unless `check_2fa` or `--check-2fa` is enabled.
+- Disabled unless `check_2fa` is enabled in config or `--check-2fa` is passed.
 - VaultSieve downloads cached TOTP-support data from `2fa.directory`.
 - Matching happens locally against saved web domains.
 - Findings mean a service supports TOTP and the vault entry does not store a TOTP secret.
@@ -35,7 +35,7 @@ Vault exports and generated reports are sensitive. VaultSieve does not modify th
 
 ## Domain Checks
 
-- Disabled unless `check_domains` or `--check-domains` is enabled.
+- Disabled unless `check_domains` is enabled in config or `--check-domains` is passed.
 - VaultSieve performs DNS resolution for unique web domains and tries the `www.` variant before marking a domain missing.
 - DNS queries reveal looked-up domains to the configured resolver.
 
@@ -43,8 +43,11 @@ Vault exports and generated reports are sensitive. VaultSieve does not modify th
 
 VaultSieve does not use LeakCheck. Public LeakCheck queries can involve emails, usernames, or truncated email hashes, which can reveal personal identifiers or enable correlation. If identity-leak checks are added later, they should be explicit opt-in and documented separately.
 
-## Reports
+## Reports Are Sensitive
 
 - Reports exclude full plaintext passwords.
-- Reports can include names, usernames, URLs, source indexes, categories, recommendations, and attribution.
+- TXT, JSON, and HTML reports can include names, usernames, email addresses, URLs, source indexes, categories, recommendations, and attribution.
+- HTML reports also include searchable metadata in the page so client-side filters work offline.
+- JSON reports include the full safe credential reference list, excluding passwords.
 - Treat TXT, JSON, and HTML reports as sensitive.
+- Do not publish or share report files unless you have reviewed and redacted account identifiers.

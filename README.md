@@ -4,7 +4,7 @@ Logo assets belong in [`assets/logos/`](assets/logos/).
 
 VaultSieve audits exported password vaults for duplicates, reused passwords, weak passwords, likely mistakes, stale services, missing 2FA context, and optional breach signals.
 
-Current version: `0.1.0a1` preview. Treat exported vault files and generated reports as sensitive.
+Current version: `1.0.0`. Treat exported vault files and generated reports as sensitive; reports exclude plaintext passwords but can include usernames, emails, URLs, and account names.
 
 ## Features
 
@@ -185,7 +185,10 @@ The TUI helps select the input file, choose the format, configure optional check
 
 - VaultSieve never modifies the original input file.
 - Reports do not include full plaintext passwords.
+- Reports can still include usernames, email addresses, URLs, account names, and source indexes.
+- Treat generated TXT, JSON, HTML, and copied logo/report directories as sensitive local artifacts.
 - Have I Been Pwned checks are off by default.
+- Domain, 2FA availability, and known breached service checks are off by default unless enabled in config or with CLI flags.
 - HIBP password checks use k-anonymity and send only the first five SHA-1 hash characters, never the full password.
 - HIBP password checks request padded responses, query each unique password once, cache results in memory for that run, and use limited concurrency.
 - Known breached service checks do not send emails or usernames; they download a public breach catalogue and match domains locally.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 import urllib.request
 from collections.abc import Callable
@@ -10,6 +11,8 @@ from typing import Any
 from vaultsieve.analyzers.domains import extract_domain
 from vaultsieve.config import config_path
 from vaultsieve.models import Credential, Finding
+
+logger = logging.getLogger(__name__)
 
 TwoFactorLookupFn = Callable[[], dict[str, dict[str, Any]]]
 
@@ -37,7 +40,8 @@ def load_totp_directory(
         )
         with urllib.request.urlopen(request, timeout=15) as response:
             data = json.loads(response.read().decode("utf-8"))
-    except Exception:
+    except Exception as exc:
+        logger.warning("2FA directory fetch failed: %s", exc)
         if cached is not None:
             return cached
         raise
@@ -82,11 +86,17 @@ def analyze_two_factor(
                 severity="medium",
                 category="two_factor_not_stored",
                 credential_ids=(credential.id,),
-                explanation="This service supports TOTP-based 2FA, but this vault entry does not include a stored TOTP secret.",
+                explanation=_two_factor_explanation(credential),
                 recommendation=recommendation,
             )
         )
     return tuple(findings)
+
+
+def _two_factor_explanation(credential: Credential) -> str:
+    if credential.source == "csv":
+        return "This service supports TOTP-based 2FA, but this CSV export does not represent a stored TOTP secret."
+    return "This service supports TOTP-based 2FA, but this vault entry does not include a stored TOTP secret."
 
 
 def _match_directory_entry(
