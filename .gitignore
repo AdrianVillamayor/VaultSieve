@@ -25,3 +25,5 @@ vaultsieve_reports/
 .DS_Store
 .idea/
 .vscode/
+.ruff_cache/
+.claude/
