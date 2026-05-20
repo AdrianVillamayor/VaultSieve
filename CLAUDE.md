@@ -10,7 +10,7 @@ python3 -m venv .venv && .venv/bin/python -m pip install -e '.[dev]'
 
 # Run app
 ./vaultsieve                                          # interactive TUI
-./vaultsieve audit <export> --format bitwarden|csv    # direct audit
+./vaultsieve audit <export> --format bitwarden|csv|lastpass|dashlane|1password|keepass|keeper|roboform
 ./vaultsieve config list                              # manage settings
 
 # Tests and lint
@@ -23,13 +23,15 @@ uv run ruff check .             # lint
 
 Three-phase pipeline: **import → analyze → report**, orchestrated by `audit.py::run_audit()`.
 
-**Importers** (`src/vaultsieve/importers/`) convert Bitwarden JSON or generic CSV into frozen `Credential` dataclasses.
+**Importers** (`src/vaultsieve/importers/`) convert vault exports into frozen `Credential` dataclasses. Supports Bitwarden JSON, generic CSV, LastPass, Dashlane (CSV/ZIP), 1Password (CSV/1PUX), KeePass (CSV/XML), Keeper (CSV headerless/JSON), and RoboForm (CSV with BOM). CSV-based importers share a `ColumnMap` system in `_csv_base.py`.
 
 **Analyzers** (`src/vaultsieve/analyzers/`) each produce `Finding` tuples from credentials. Run in sequence: duplicates → password quality → insecure_http → domain_concentration → optional checks (HIBP breaches, domain existence, known breaches, 2FA). Optional checks use `ThreadPoolExecutor` for concurrency.
 
 **Reports** (`src/vaultsieve/reports/`) render to terminal (Rich), TXT, JSON, and self-contained HTML with embedded CSS/JS. The HTML report has a dashboard (score orb, severity chart, category guide), action board, filters, and findings table.
 
 **Cleaner** (`src/vaultsieve/cleaner.py`) writes deduplicated/cleaned exports without modifying originals.
+
+**TUI** (`src/vaultsieve/tui.py`) uses `questionary` for arrow-key interactive prompts and Rich for styled output (panels, progress).
 
 **Models** (`src/vaultsieve/models.py`): `Credential`, `Finding`, `AuditReport`, `AuditOptions` — all frozen dataclasses. Severity levels: critical > high > medium > low > obsolete.
 

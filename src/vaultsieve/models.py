@@ -19,7 +19,16 @@ FindingCategory = Literal[
     "two_factor_not_stored",
     "input_issue",
 ]
-InputFormat = Literal["bitwarden", "csv"]
+InputFormat = Literal[
+    "bitwarden",
+    "csv",
+    "lastpass",
+    "dashlane",
+    "1password",
+    "keepass",
+    "keeper",
+    "roboform",
+]
 
 SEVERITY_ORDER: dict[Severity, int] = {
     "critical": 0,

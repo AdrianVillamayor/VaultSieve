@@ -9,8 +9,15 @@ Current version: `1.0.0`. Treat exported vault files and generated reports as se
 ## Features
 
 - Bitwarden JSON exports.
-- Generic CSV files with `name`, `url`, `username`, `password` columns.
-- Interactive assistant by default with `vaultsieve`.
+- LastPass CSV exports.
+- Dashlane CSV and ZIP exports (also encrypted `.dash` detection with clear error).
+- 1Password CSV and 1PUX exports.
+- KeePass/KeePassXC CSV and XML exports.
+- Keeper CSV (headerless) and JSON exports.
+- RoboForm CSV exports (BOM-safe).
+- Generic CSV files with `name`, `url`, `username`, `password` columns — works with Chrome, NordPass, Google Password Manager, and others.
+- Adding new importers is straightforward; see [`docs/adding-importers.md`](docs/adding-importers.md).
+- Interactive arrow-key assistant by default with `vaultsieve`.
 - Direct automation with `vaultsieve audit`.
 - Terminal, TXT, JSON, and HTML reports.
 - HTML category dashboard with affected-entry filtering.
@@ -89,7 +96,19 @@ Run an audit and write the configured report formats:
 ```bash
 ./vaultsieve audit path/to/export.json --format bitwarden
 ./vaultsieve audit path/to/passwords.csv --format csv
+./vaultsieve audit path/to/lastpass.csv --format lastpass
+./vaultsieve audit path/to/dashlane.csv --format dashlane
+./vaultsieve audit path/to/dashlane-export.zip --format dashlane
+./vaultsieve audit path/to/1password.csv --format 1password
+./vaultsieve audit path/to/1password-export.1pux --format 1password
+./vaultsieve audit path/to/keepass.csv --format keepass
+./vaultsieve audit path/to/keepass.xml --format keepass
+./vaultsieve audit path/to/keeper.csv --format keeper
+./vaultsieve audit path/to/keeper.json --format keeper
+./vaultsieve audit path/to/roboform.csv --format roboform
 ```
+
+For Dashlane, 1Password, KeePass, and Keeper, the file extension (`.csv`, `.json`, `.xml`, `.zip`, `.1pux`) determines which parser is used.
 
 Enable Have I Been Pwned checking explicitly:
 

@@ -202,7 +202,7 @@ def _render_action_plan(dashboard: dict[str, int]) -> str:
             "Fix critical passwords",
             " + ".join(parts),
             "Breached or missing passwords",
-            "Rotate breached passwords first, then add passwords to empty entries. One unique-password change may fix many rows.",
+            "Rotate breached passwords first, then fix empty entries.",
             "breached,empty",
             "critical",
         ))
@@ -214,7 +214,7 @@ def _render_action_plan(dashboard: dict[str, int]) -> str:
             "Break password reuse",
             _count(dashboard["reuse"], "group"),
             "Same secret elsewhere",
-            "Start with reused passwords that also appear in critical or high-risk services, then rerun the audit.",
+            "Start with high-risk services, then rerun the audit.",
             "reuse",
             "high",
         ))
@@ -226,7 +226,7 @@ def _render_action_plan(dashboard: dict[str, int]) -> str:
             "Create a clean copy",
             f"{dashboard['safe_duplicate_removals']} removable",
             "Safe exact duplicates",
-            "Use clean output after reviewing keepers. VaultSieve writes a new file and never edits the original export.",
+            "Review keepers, then export a clean copy.",
             "duplicate",
             "high",
         ))
@@ -249,7 +249,7 @@ def _render_action_plan(dashboard: dict[str, int]) -> str:
             "Strengthen security",
             " · ".join(medium_items),
             "Weak passwords, insecure URLs, and 2FA gaps",
-            "Upgrade weak passwords, switch URLs to HTTPS, and confirm 2FA is enabled where supported.",
+            "Upgrade passwords, use HTTPS, and enable 2FA.",
             ",".join(medium_categories),
             "medium",
         ))
@@ -269,7 +269,7 @@ def _render_action_plan(dashboard: dict[str, int]) -> str:
             "Review services",
             " · ".join(low_items),
             "Account clusters and breach history",
-            "Trim domains with many accounts and check services with public breach history. Prioritize old or reused passwords.",
+            "Consolidate clustered domains and review services with breach history.",
             ",".join(low_categories),
             "low",
         ))
@@ -281,7 +281,7 @@ def _render_action_plan(dashboard: dict[str, int]) -> str:
             "Confirm obsolete services",
             _count(dashboard["domain_missing"], "group"),
             f"{_count(dashboard['obsolete_candidates'], 'entry', 'entries')} affected",
-            "DNS did not resolve. Confirm manually before deleting; temporary DNS failures can happen.",
+            "DNS failed. Verify manually before removing — outages can cause false positives.",
             "domain_missing",
             "obsolete",
         ))
@@ -533,7 +533,7 @@ body {
 }
 .brand-lockup { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 1rem; }
 .brand-icon { width: 3.4rem; height: 3.4rem; object-fit: contain; border-radius: 0.75rem; padding: 0; display: block; }
-.brand-name { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; color: var(--accent); }
+.brand-name { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; color: var(--ink); }
 .theme-toggle { position: fixed; bottom: 1.25rem; right: 1.25rem; z-index: 50; width: 2.6rem; height: 2.6rem; padding: 0; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--muted); cursor: pointer; display: grid; place-items: center; box-shadow: var(--shadow); transition: color var(--transition), background var(--transition), box-shadow var(--transition); }
 .theme-toggle:hover { color: var(--ink); background: var(--panel-soft); box-shadow: var(--shadow-lg); }
 .theme-icon-moon { display: none; }
@@ -694,18 +694,36 @@ code { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, C
 
 /* === Responsive === */
 @media (max-width: 900px) {
-  .hero, .action-panel { grid-template-columns: 1fr; }
-  .overview-main, .overview-lower { grid-template-columns: 1fr; }
+  .hero { grid-template-columns: 1fr; }
+  .meta-card { min-width: 0; }
+  .action-panel { grid-template-columns: 1fr; }
+  .overview-main { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .overview-lower { grid-template-columns: 1fr; }
   .affected-heading { display: grid; align-items: start; }
-  .filters { grid-template-columns: 1fr; position: static; box-shadow: var(--shadow-sm); }
+  .filters { grid-template-columns: 1fr 1fr; position: static; box-shadow: var(--shadow-sm); }
+  .filters label:first-child { grid-column: 1 / -1; }
   .findings { max-height: none; overflow: visible; padding-right: 0; }
-  .category-guide { grid-template-columns: 1fr 1fr; }
+  .action-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 }
 @media (max-width: 600px) {
-  .shell { width: calc(100% - 1.5rem); padding: 1.5rem 0 2rem; }
-  .hero { padding: 1.25rem; }
-  .category-guide { grid-template-columns: 1fr; }
+  .shell { width: calc(100% - 1.25rem); padding: 1.25rem 0 2rem; gap: 1rem; }
+  .hero { padding: 1.25rem; gap: 1rem; }
+  .brand-icon { width: 2.4rem; height: 2.4rem; }
+  .brand-name { font-size: 1.2rem; }
+  .hero h2 { font-size: 1.2rem; }
+  .overview-panel { padding: 1rem; }
+  .score-orb { width: 6rem; height: 6rem; }
+  .score-orb strong { font-size: 1.6rem; }
+  .action-panel { padding: 1rem; }
   .action-grid { grid-template-columns: 1fr; }
+  .filters { grid-template-columns: 1fr; padding: 0.65rem 0.75rem; }
+  .filters label:first-child { grid-column: 1; }
+  .findings-table { min-width: 0; font-size: 0.78rem; }
+  .findings-table th:nth-child(4), .findings-table td:nth-child(4),
+  .findings-table th:nth-child(5), .findings-table td:nth-child(5) { display: none; }
+  .issue-cell { min-width: 0; }
+  .affected-cell { min-width: 0; }
+  .theme-toggle { bottom: 0.75rem; right: 0.75rem; width: 2.2rem; height: 2.2rem; }
 }
 """
 

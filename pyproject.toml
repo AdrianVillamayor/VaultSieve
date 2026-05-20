@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=70"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,10 +8,10 @@ version = "1.0.0"
 description = "Audit exported password vaults for duplicates and password security issues."
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["rich>=13.0"]
+dependencies = ["rich>=13.9", "questionary>=2.1"]
 license = "MIT"
 authors = [
-  { name = "Adrii" },
+  { name = "Adrii", email = "adrian.villamayor@gmail.com" },
 ]
 keywords = [
   "bitwarden",
@@ -24,7 +24,7 @@ keywords = [
   "vault",
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
   "Intended Audience :: End Users/Desktop",
   "Intended Audience :: Information Technology",
@@ -44,7 +44,7 @@ Issues = "https://github.com/AdrianVillamayor/VaultSieve/issues"
 Changelog = "https://github.com/AdrianVillamayor/VaultSieve/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["build>=1.2", "pytest>=8.0", "ruff>=0.11", "twine>=6.0"]
+dev = ["build>=1.5", "pytest>=8.3", "ruff>=0.11", "twine>=6.1", "pytest-cov>=6.1"]
 
 [project.scripts]
 vaultsieve = "vaultsieve.cli:main"

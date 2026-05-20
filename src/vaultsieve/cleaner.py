@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import csv
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from vaultsieve.analyzers.duplicates import duplicate_removal_ids
 from vaultsieve.errors import VaultSieveError
+from vaultsieve.importers._csv_base import write_clean_mapped_csv
 from vaultsieve.importers.bitwarden import load_bitwarden_data
+from vaultsieve.importers.dashlane_json import load_dashlane_json_data
+from vaultsieve.importers.keeper_json import load_keeper_json_data
 from vaultsieve.models import Credential, Finding, InputFormat
 
 CleanMode = Literal["duplicates", "obsolete", "all"]
@@ -35,6 +39,22 @@ def write_clean_output(
         return _write_clean_bitwarden(input_path, output_path, credentials, remove_ids)
     if input_format == "csv":
         return _write_clean_csv(output_path, credentials, remove_ids)
+    if input_format in {"lastpass", "dashlane", "1password", "keepass", "keeper", "roboform"}:
+        ext = input_path.suffix.lower()
+        if input_format == "dashlane" and ext == ".json":
+            return _write_clean_json(
+                input_path, output_path, credentials, remove_ids,
+                load_dashlane_json_data, "AUTHENTIFIANT",
+            )
+        if input_format == "keeper" and ext == ".json":
+            return _write_clean_json(
+                input_path, output_path, credentials, remove_ids,
+                load_keeper_json_data, "records",
+            )
+        strip_bom = input_format == "roboform"
+        return write_clean_mapped_csv(
+            input_path, output_path, credentials, remove_ids, strip_bom=strip_bom,
+        )
     raise ValueError(f"Unsupported input format: {input_format}")
 
 
@@ -105,3 +125,27 @@ def _write_clean_csv(
     except OSError as err:
         raise VaultSieveError(f"Cannot write clean output: {output_path}") from err
     return removed
+
+
+def _write_clean_json(
+    input_path: Path,
+    output_path: Path,
+    credentials: tuple[Credential, ...],
+    remove_ids: set[str],
+    loader: Callable[[Path], dict[str, Any]],
+    items_key: str,
+) -> int:
+    data = loader(input_path)
+    remove_indexes = {
+        credential.source_index for credential in credentials if credential.id in remove_ids
+    }
+    if items_key in data and isinstance(data[items_key], list):
+        data[items_key] = [
+            item for index, item in enumerate(data[items_key]) if index not in remove_indexes
+        ]
+    try:
+        with output_path.open("w", encoding="utf-8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=2)
+    except OSError as err:
+        raise VaultSieveError(f"Cannot write clean output: {output_path}") from err
+    return len(remove_indexes)

@@ -17,9 +17,13 @@ dist/
 
 # Local VaultSieve outputs
 vaultsieve_reports/
-*_export.json
+*_clean.json
+*_clean.csv
 *.json
 *.csv
+
+# Allow example fixtures
+examples/
 
 # Local editor and OS files
 .DS_Store

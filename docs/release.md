@@ -1,6 +1,6 @@
 # VaultSieve Release Checklist
 
-This repo is currently at preview version `0.1.0a1`.
+This repo is currently at version `1.0.0`.
 
 ## Preflight
 

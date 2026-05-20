@@ -11,8 +11,19 @@ from vaultsieve.analyzers.insecure_http import analyze_insecure_http
 from vaultsieve.analyzers.known_breaches import KnownBreachesLookupFn, analyze_known_breaches
 from vaultsieve.analyzers.passwords import analyze_password_quality
 from vaultsieve.analyzers.two_factor import TwoFactorLookupFn, analyze_two_factor
+from vaultsieve.errors import VaultSieveError
 from vaultsieve.importers.bitwarden import import_bitwarden
 from vaultsieve.importers.csv_generic import import_csv
+from vaultsieve.importers.dashlane import import_dashlane
+from vaultsieve.importers.dashlane_json import import_dashlane_json
+from vaultsieve.importers.keepass import import_keepass
+from vaultsieve.importers.keepass_xml import import_keepass_xml
+from vaultsieve.importers.keeper import import_keeper
+from vaultsieve.importers.keeper_json import import_keeper_json
+from vaultsieve.importers.lastpass import import_lastpass
+from vaultsieve.importers.onepassword import import_onepassword
+from vaultsieve.importers.onepassword_1pux import import_onepassword_1pux
+from vaultsieve.importers.roboform import import_roboform
 from vaultsieve.models import (
     SEVERITY_ORDER,
     AuditOptions,
@@ -25,11 +36,49 @@ from vaultsieve.models import (
 ProgressCallback = Callable[[str, int | None], None]
 
 
+IMPORTERS: dict[str, tuple[str, ...]] = {
+    "bitwarden": ("json",),
+    "csv": ("csv",),
+    "lastpass": ("csv",),
+    "dashlane": ("csv", "json"),
+    "1password": ("csv",),
+    "keepass": ("csv", "xml"),
+    "keeper": ("csv", "json"),
+    "roboform": ("csv",),
+}
+
+
 def import_credentials(input_path: Path, input_format: InputFormat) -> tuple[Credential, ...]:
+    ext = input_path.suffix.lower()
     if input_format == "bitwarden":
         return import_bitwarden(input_path)
     if input_format == "csv":
         return import_csv(input_path)
+    if input_format == "lastpass":
+        return import_lastpass(input_path)
+    if input_format == "dashlane":
+        if ext == ".json":
+            return import_dashlane_json(input_path)
+        if ext == ".dash":
+            raise VaultSieveError(
+                "Dashlane .dash files are encrypted. "
+                "Export as CSV or zip from Dashlane instead."
+            )
+        return import_dashlane(input_path)
+    if input_format == "1password":
+        if ext == ".1pux":
+            return import_onepassword_1pux(input_path)
+        return import_onepassword(input_path)
+    if input_format == "keepass":
+        if ext == ".xml":
+            return import_keepass_xml(input_path)
+        return import_keepass(input_path)
+    if input_format == "keeper":
+        if ext == ".json":
+            return import_keeper_json(input_path)
+        return import_keeper(input_path)
+    if input_format == "roboform":
+        return import_roboform(input_path)
     raise ValueError(f"Unsupported input format: {input_format}")
 
 

@@ -49,7 +49,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     audit = subparsers.add_parser("audit", help="Audit an exported vault file.")
     audit.add_argument("input_path", type=Path)
-    audit.add_argument("--format", choices=["bitwarden", "csv"], required=True)
+    audit.add_argument(
+        "--format",
+        choices=["bitwarden", "csv", "lastpass", "dashlane", "1password", "keepass", "keeper", "roboform"],
+        required=True,
+    )
     audit.add_argument("--check-breaches", action="store_true", default=None)
     audit.add_argument("--no-check-breaches", action="store_false", dest="check_breaches")
     audit.add_argument("--check-domains", action="store_true", default=None)
