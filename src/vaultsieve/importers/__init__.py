@@ -8,6 +8,7 @@ from vaultsieve.importers.keeper import import_keeper
 from vaultsieve.importers.keeper_json import import_keeper_json
 from vaultsieve.importers.lastpass import import_lastpass
 from vaultsieve.importers.onepassword import import_onepassword
+from vaultsieve.importers.onepassword_1pux import import_onepassword_1pux
 from vaultsieve.importers.roboform import import_roboform
 
 __all__ = [
@@ -21,5 +22,6 @@ __all__ = [
     "import_keeper_json",
     "import_lastpass",
     "import_onepassword",
+    "import_onepassword_1pux",
     "import_roboform",
 ]
