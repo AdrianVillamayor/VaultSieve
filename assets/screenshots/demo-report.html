@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>VaultSieve Audit Report</title>
-  <link rel="icon" href="vaultsieve-icon.svg" type="image/svg+xml">
-  <style>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>VaultSieve Audit Report</title>
+        <link rel="icon" href="vaultsieve-icon.svg" type="image/svg+xml">
+        <style>
 :root, [data-theme="light"] {
   color-scheme: light;
   --page: #f8f9fb;
@@ -298,377 +298,636 @@ code { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, C
   .theme-toggle { bottom: 0.75rem; right: 0.75rem; width: 2.2rem; height: 2.2rem; }
 }
 </style>
-</head>
-<body>
-  <main class="shell">
-    <header class="hero">
-      <div>
-        <div class="brand-lockup" aria-label="VaultSieve">
-          <img class="brand-icon" src="vaultsieve-icon.svg" alt="" aria-hidden="true">
-          <span class="brand-name">VaultSieve</span>
-        </div>
-        <p class="eyebrow">Local report</p>
-        <h2>Password vault audit</h2>
-        <p class="muted">Local report generated from an exported vault. Full plaintext passwords are not included.</p>
-      </div>
-      <div class="meta-card">
-        <span>Input</span>
-        <strong>vault-export.json</strong>
-        <span>Format</span>
-        <strong>bitwarden</strong>
-      </div>
-    </header>
+    </head>
+    <body>
+        <main class="shell">
+            <header class="hero">
+                <div>
+                    <div class="brand-lockup" aria-label="VaultSieve">
+                        <img class="brand-icon" src="vaultsieve-icon.svg" alt
+                            aria-hidden="true">
+                        <span class="brand-name">VaultSieve</span>
+                    </div>
+                    <p class="eyebrow">Local report</p>
+                    <h2>Password vault audit</h2>
+                    <p class="muted">Local report generated from an exported
+                        vault. Full plaintext passwords are not included.</p>
+                </div>
+                <div class="meta-card">
+                    <span>Input</span>
+                    <strong>vault-export.csv</strong>
+                    <span>Format</span>
+                    <strong>csv</strong>
+                </div>
+            </header>
 
-    
-    <section class="overview-panel">
-      <div class="overview-main">
-        <div class="score-orb" style="--score: 38;">
-          <strong>38</strong>
-          <span>health score</span>
-        </div>
-        <div>
-          <p class="section-kicker">Overview</p>
-          <h2>Vault health at a glance</h2>
-          <p class="overview-copy">The score is capped so repeated similar findings do not collapse large vaults to zero. Work through the action board below to improve it.</p>
-        </div>
-      </div>
-      <div class="overview-lower overview-lower--single">
-        <div>
-          <p class="overview-label">Severity mix</p>
-          <div class="severity-chart">
-            <div class="chart-row severity-critical">
-              <span>Critical</span>
-              <div class="chart-track"><i style="width: 38%"></i></div>
-              <strong>3</strong>
-            </div>
-            
-            <div class="chart-row severity-high">
-              <span>High</span>
-              <div class="chart-track"><i style="width: 25%"></i></div>
-              <strong>2</strong>
-            </div>
-            
-            <div class="chart-row severity-medium">
-              <span>Medium</span>
-              <div class="chart-track"><i style="width: 100%"></i></div>
-              <strong>8</strong>
-            </div>
-            
-            <div class="chart-row severity-low">
-              <span>Low</span>
-              <div class="chart-track"><i style="width: 75%"></i></div>
-              <strong>6</strong>
-            </div>
-            
-            <div class="chart-row severity-obsolete">
-              <span>Obsolete</span>
-              <div class="chart-track"><i style="width: 12%"></i></div>
-              <strong>1</strong>
-            </div>
-            </div>
-        </div>
-      </div>
-    </section>
-    
+            <section class="overview-panel">
+                <div class="overview-main">
+                    <div class="score-orb" style="--score: 38;">
+                        <strong>38</strong>
+                        <span>health score</span>
+                    </div>
+                    <div>
+                        <p class="section-kicker">Overview</p>
+                        <h2>Vault health at a glance</h2>
+                        <p class="overview-copy">The score is capped so repeated
+                            similar findings do not collapse large vaults to
+                            zero. Work through the action board below to improve
+                            it.</p>
+                    </div>
+                </div>
+                <div class="overview-lower overview-lower--single">
+                    <div>
+                        <p class="overview-label">Severity mix</p>
+                        <div class="severity-chart">
+                            <div class="chart-row severity-critical">
+                                <span>Critical</span>
+                                <div class="chart-track"><i
+                                        style="width: 38%"></i></div>
+                                <strong>3</strong>
+                            </div>
 
-    
-    <section class="action-panel">
-      <div>
-        <p class="section-kicker">Recommended next steps</p>
-        <h2>Action board</h2>
-        <p class="action-help">Work top to bottom. Use each button to filter the affected-entry table, fix a batch, then rerun the audit.</p>
-      </div>
-      <div class="action-grid">
-    <article class="action-card severity-critical">
-      <div class="action-card-top">
-        <span class="action-step">1</span>
-        <span class="badge">critical</span>
-      </div>
-      <h3>Fix critical passwords</h3>
-      <strong>2 breached entries + 1 empty password</strong>
-      <small>Breached or missing passwords</small>
-      <p>Rotate breached passwords first, then fix empty entries.</p>
-      <button type="button" data-category-filter="breached,empty">Show affected</button>
-    </article>
-    
-    <article class="action-card severity-high">
-      <div class="action-card-top">
-        <span class="action-step">2</span>
-        <span class="badge">high</span>
-      </div>
-      <h3>Break password reuse</h3>
-      <strong>2 groups</strong>
-      <small>Same secret elsewhere</small>
-      <p>Start with high-risk services, then rerun the audit.</p>
-      <button type="button" data-category-filter="reuse">Show affected</button>
-    </article>
-    
-    <article class="action-card severity-medium">
-      <div class="action-card-top">
-        <span class="action-step">3</span>
-        <span class="badge">medium</span>
-      </div>
-      <h3>Strengthen security</h3>
-      <strong>3 weak passwords · 2 insecure URLs · 3 missing 2FAs</strong>
-      <small>Weak passwords, insecure URLs, and 2FA gaps</small>
-      <p>Upgrade passwords, use HTTPS, and enable 2FA.</p>
-      <button type="button" data-category-filter="weak,insecure_http,two_factor_not_stored">Show affected</button>
-    </article>
-    
-    <article class="action-card severity-low">
-      <div class="action-card-top">
-        <span class="action-step">4</span>
-        <span class="badge">low</span>
-      </div>
-      <h3>Review services</h3>
-      <strong>2 clusters · 2 breached services</strong>
-      <small>Account clusters and breach history</small>
-      <p>Consolidate clustered domains and review services with breach history.</p>
-      <button type="button" data-category-filter="domain_concentration,service_known_breach">Show affected</button>
-    </article>
-    
-    <article class="action-card severity-obsolete">
-      <div class="action-card-top">
-        <span class="action-step">5</span>
-        <span class="badge">obsolete</span>
-      </div>
-      <h3>Confirm obsolete services</h3>
-      <strong>1 group</strong>
-      <small>1 entry affected</small>
-      <p>DNS failed. Verify manually before removing — outages can cause false positives.</p>
-      <button type="button" data-category-filter="domain_missing">Show affected</button>
-    </article>
-    </div>
-    </section>
-    
+                            <div class="chart-row severity-high">
+                                <span>High</span>
+                                <div class="chart-track"><i
+                                        style="width: 25%"></i></div>
+                                <strong>2</strong>
+                            </div>
 
-    <section class="affected-heading">
-      <div>
-        <p class="section-kicker">Affected entries</p>
-        <h2>Selected findings</h2>
-      </div>
-      <p>Use an action button or the filters to inspect the accounts behind each issue.</p>
-    </section>
+                            <div class="chart-row severity-medium">
+                                <span>Medium</span>
+                                <div class="chart-track"><i
+                                        style="width: 100%"></i></div>
+                                <strong>8</strong>
+                            </div>
 
-    
-    <section class="filters" aria-label="Report filters">
-      <label>
-        Search
-        <input id="search" type="search" placeholder="Search names, usernames, URLs, recommendations...">
-      </label>
-      <label>
-        Severity
-        <select id="severity-filter">
-          <option value="all">All severities</option>
-          <option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="obsolete">Obsolete</option>
-        </select>
-      </label>
-      <label>
-        Category
-        <select id="category-filter">
-          <option value="all">All categories</option>
-          <option value="breached">Breached</option><option value="domain_concentration">Domain Concentration</option><option value="domain_missing">Domain Missing</option><option value="duplicate">Duplicate</option><option value="empty">Empty</option><option value="insecure_http">Insecure Http</option><option value="reuse">Reuse</option><option value="service_known_breach">Service Known Breach</option><option value="two_factor_not_stored">Two Factor Not Stored</option><option value="weak">Weak</option>
-        </select>
-      </label>
-      <button type="button" id="clear-filters">Clear filters</button>
-    </section>
-    
+                            <div class="chart-row severity-low">
+                                <span>Low</span>
+                                <div class="chart-track"><i
+                                        style="width: 75%"></i></div>
+                                <strong>6</strong>
+                            </div>
 
-    <section class="active-filter" id="active-filter">Showing all findings</section>
+                            <div class="chart-row severity-obsolete">
+                                <span>Obsolete</span>
+                                <div class="chart-track"><i
+                                        style="width: 12%"></i></div>
+                                <strong>1</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-    <section class="toolbar-result">
-      <span id="visible-count">20</span> visible findings
-    </section>
+            <section class="action-panel">
+                <div>
+                    <p class="section-kicker">Recommended next steps</p>
+                    <h2>Action board</h2>
+                    <p class="action-help">Work top to bottom. Use each button
+                        to filter the affected-entry table, fix a batch, then
+                        rerun the audit.</p>
+                </div>
+                <div class="action-grid">
+                    <article class="action-card severity-critical">
+                        <div class="action-card-top">
+                            <span class="action-step">1</span>
+                            <span class="badge">critical</span>
+                        </div>
+                        <h3>Fix critical passwords</h3>
+                        <strong>2 breached entries + 1 empty password</strong>
+                        <small>Breached or missing passwords</small>
+                        <p>Rotate breached passwords first, then fix empty
+                            entries.</p>
+                        <button type="button"
+                            data-category-filter="breached,empty">Show
+                            affected</button>
+                    </article>
 
-    <section class="findings" id="findings">
-      
-    <div class="findings-table-wrap">
-      <table class="findings-table">
-        <thead>
-          <tr>
-            <th>Severity</th>
-            <th>Category</th>
-            <th>Issue / recommendation</th>
-            <th>Affected</th>
-            <th>Entries</th>
-          </tr>
-        </thead>
-        <tbody>
-            <tr class="finding-row severity-critical" data-severity="critical" data-category="breached" data-search="critical breached password found in breach database. rotate immediately. bw:0 github dev@company.io https://github.com">
-              <td><span class="badge">critical</span></td>
-              <td><span class="category">breached</span></td>
-              <td class="issue-cell"><strong>Password found in breach database.</strong><p>Rotate immediately.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>GitHub</strong> <small>dev@company.io</small> <code>bw:0</code> <em>https://github.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-critical" data-severity="critical" data-category="breached" data-search="critical breached password found in breach database. rotate immediately. bw:1 gmail user@gmail.com https://mail.google.com">
-              <td><span class="badge">critical</span></td>
-              <td><span class="category">breached</span></td>
-              <td class="issue-cell"><strong>Password found in breach database.</strong><p>Rotate immediately.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>Gmail</strong> <small>user@gmail.com</small> <code>bw:1</code> <em>https://mail.google.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-critical" data-severity="critical" data-category="empty" data-search="critical empty no password stored. add a strong password. bw:5 netflix personal@gmail.com https://netflix.com">
-              <td><span class="badge">critical</span></td>
-              <td><span class="category">empty</span></td>
-              <td class="issue-cell"><strong>No password stored.</strong><p>Add a strong password.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>Netflix</strong> <small>personal@gmail.com</small> <code>bw:5</code> <em>https://netflix.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-high" data-severity="high" data-category="reuse" data-search="high reuse same password on 2 services. use unique passwords. bw:2 aws console admin@company.io https://aws.amazon.com bw:3 slack user@company.io https://slack.com">
-              <td><span class="badge">high</span></td>
-              <td><span class="category">reuse</span></td>
-              <td class="issue-cell"><strong>Same password on 2 services.</strong><p>Use unique passwords.</p></td>
-              <td class="count-cell">2</td>
-              <td class="affected-cell"><span><strong>AWS Console</strong> <small>admin@company.io</small> <code>bw:2</code> <em>https://aws.amazon.com</em></span><span><strong>Slack</strong> <small>user@company.io</small> <code>bw:3</code> <em>https://slack.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-high" data-severity="high" data-category="reuse" data-search="high reuse same password on 2 services. use unique passwords. bw:6 spotify personal@gmail.com https://spotify.com bw:7 linkedin user@gmail.com https://linkedin.com">
-              <td><span class="badge">high</span></td>
-              <td><span class="category">reuse</span></td>
-              <td class="issue-cell"><strong>Same password on 2 services.</strong><p>Use unique passwords.</p></td>
-              <td class="count-cell">2</td>
-              <td class="affected-cell"><span><strong>Spotify</strong> <small>personal@gmail.com</small> <code>bw:6</code> <em>https://spotify.com</em></span><span><strong>LinkedIn</strong> <small>user@gmail.com</small> <code>bw:7</code> <em>https://linkedin.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-medium" data-severity="medium" data-category="weak" data-search="medium weak password shorter than 12 characters. use a longer password. bw:8 twitter user@gmail.com https://twitter.com">
-              <td><span class="badge">medium</span></td>
-              <td><span class="category">weak</span></td>
-              <td class="issue-cell"><strong>Password shorter than 12 characters.</strong><p>Use a longer password.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>Twitter</strong> <small>user@gmail.com</small> <code>bw:8</code> <em>https://twitter.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-medium" data-severity="medium" data-category="weak" data-search="medium weak password shorter than 12 characters. use a longer password. bw:9 dropbox user@company.io https://dropbox.com">
-              <td><span class="badge">medium</span></td>
-              <td><span class="category">weak</span></td>
-              <td class="issue-cell"><strong>Password shorter than 12 characters.</strong><p>Use a longer password.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>Dropbox</strong> <small>user@company.io</small> <code>bw:9</code> <em>https://dropbox.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-medium" data-severity="medium" data-category="weak" data-search="medium weak common pattern detected. use a random password. bw:10 jira dev@company.io https://jira.atlassian.net">
-              <td><span class="badge">medium</span></td>
-              <td><span class="category">weak</span></td>
-              <td class="issue-cell"><strong>Common pattern detected.</strong><p>Use a random password.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>Jira</strong> <small>dev@company.io</small> <code>bw:10</code> <em>https://jira.atlassian.net</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-medium" data-severity="medium" data-category="insecure_http" data-search="medium insecure_http url uses plain http. switch to https. bw:22 old forum user@gmail.com http://forum.example.net">
-              <td><span class="badge">medium</span></td>
-              <td><span class="category">insecure http</span></td>
-              <td class="issue-cell"><strong>URL uses plain HTTP.</strong><p>Switch to HTTPS.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>Old Forum</strong> <small>user@gmail.com</small> <code>bw:22</code> <em>http://forum.example.net</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-medium" data-severity="medium" data-category="insecure_http" data-search="medium insecure_http url uses plain http. switch to https. bw:23 legacy wiki dev@company.io http://wiki.oldsite.org">
-              <td><span class="badge">medium</span></td>
-              <td><span class="category">insecure http</span></td>
-              <td class="issue-cell"><strong>URL uses plain HTTP.</strong><p>Switch to HTTPS.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>Legacy Wiki</strong> <small>dev@company.io</small> <code>bw:23</code> <em>http://wiki.oldsite.org</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-medium" data-severity="medium" data-category="two_factor_not_stored" data-search="medium two_factor_not_stored service supports totp but vault has no secret. enable 2fa. bw:1 gmail user@gmail.com https://mail.google.com">
-              <td><span class="badge">medium</span></td>
-              <td><span class="category">two factor not stored</span></td>
-              <td class="issue-cell"><strong>Service supports TOTP but vault has no secret.</strong><p>Enable 2FA.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>Gmail</strong> <small>user@gmail.com</small> <code>bw:1</code> <em>https://mail.google.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-medium" data-severity="medium" data-category="two_factor_not_stored" data-search="medium two_factor_not_stored service supports totp but vault has no secret. enable 2fa. bw:2 aws console admin@company.io https://aws.amazon.com">
-              <td><span class="badge">medium</span></td>
-              <td><span class="category">two factor not stored</span></td>
-              <td class="issue-cell"><strong>Service supports TOTP but vault has no secret.</strong><p>Enable 2FA.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>AWS Console</strong> <small>admin@company.io</small> <code>bw:2</code> <em>https://aws.amazon.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-medium" data-severity="medium" data-category="two_factor_not_stored" data-search="medium two_factor_not_stored service supports totp but vault has no secret. enable 2fa. bw:17 stripe admin@company.io https://stripe.com">
-              <td><span class="badge">medium</span></td>
-              <td><span class="category">two factor not stored</span></td>
-              <td class="issue-cell"><strong>Service supports TOTP but vault has no secret.</strong><p>Enable 2FA.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>Stripe</strong> <small>admin@company.io</small> <code>bw:17</code> <em>https://stripe.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-low" data-severity="low" data-category="duplicate" data-search="low duplicate these credentials are exact duplicates. keep newest, remove rest. bw:10 jira dev@company.io https://jira.atlassian.net bw:11 confluence dev@company.io https://confluence.atlassian.net">
-              <td><span class="badge">low</span></td>
-              <td><span class="category">duplicate</span></td>
-              <td class="issue-cell"><strong>These credentials are exact duplicates.</strong><p>Keep newest, remove rest.</p></td>
-              <td class="count-cell">2</td>
-              <td class="affected-cell"><span><strong>Jira</strong> <small>dev@company.io</small> <code>bw:10</code> <em>https://jira.atlassian.net</em></span><span><strong>Confluence</strong> <small>dev@company.io</small> <code>bw:11</code> <em>https://confluence.atlassian.net</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-low" data-severity="low" data-category="duplicate" data-search="low duplicate these credentials are exact duplicates. keep newest, remove rest. bw:12 docker hub dev@company.io https://hub.docker.com bw:13 npm dev@company.io https://npmjs.com">
-              <td><span class="badge">low</span></td>
-              <td><span class="category">duplicate</span></td>
-              <td class="issue-cell"><strong>These credentials are exact duplicates.</strong><p>Keep newest, remove rest.</p></td>
-              <td class="count-cell">2</td>
-              <td class="affected-cell"><span><strong>Docker Hub</strong> <small>dev@company.io</small> <code>bw:12</code> <em>https://hub.docker.com</em></span><span><strong>NPM</strong> <small>dev@company.io</small> <code>bw:13</code> <em>https://npmjs.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-low" data-severity="low" data-category="domain_concentration" data-search="low domain_concentration domain atlassian.net has 3 entries. review whether all needed. bw:10 jira dev@company.io https://jira.atlassian.net bw:11 confluence dev@company.io https://confluence.atlassian.net bw:12 docker hub dev@company.io https://hub.docker.com">
-              <td><span class="badge">low</span></td>
-              <td><span class="category">domain concentration</span></td>
-              <td class="issue-cell"><strong>Domain atlassian.net has 3 entries.</strong><p>Review whether all needed.</p></td>
-              <td class="count-cell">3</td>
-              <td class="affected-cell"><span><strong>Jira</strong> <small>dev@company.io</small> <code>bw:10</code> <em>https://jira.atlassian.net</em></span><span><strong>Confluence</strong> <small>dev@company.io</small> <code>bw:11</code> <em>https://confluence.atlassian.net</em></span><span><strong>Docker Hub</strong> <small>dev@company.io</small> <code>bw:12</code> <em>https://hub.docker.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-low" data-severity="low" data-category="domain_concentration" data-search="low domain_concentration domain company.io has 2 entries. consolidate if possible. bw:14 pypi dev@company.io https://pypi.org bw:15 vercel dev@company.io https://vercel.com">
-              <td><span class="badge">low</span></td>
-              <td><span class="category">domain concentration</span></td>
-              <td class="issue-cell"><strong>Domain company.io has 2 entries.</strong><p>Consolidate if possible.</p></td>
-              <td class="count-cell">2</td>
-              <td class="affected-cell"><span><strong>PyPI</strong> <small>dev@company.io</small> <code>bw:14</code> <em>https://pypi.org</em></span><span><strong>Vercel</strong> <small>dev@company.io</small> <code>bw:15</code> <em>https://vercel.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-low" data-severity="low" data-category="service_known_breach" data-search="low service_known_breach twitter.com has public breach history. review account. bw:8 twitter user@gmail.com https://twitter.com">
-              <td><span class="badge">low</span></td>
-              <td><span class="category">service known breach</span></td>
-              <td class="issue-cell"><strong>twitter.com has public breach history.</strong><p>Review account.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>Twitter</strong> <small>user@gmail.com</small> <code>bw:8</code> <em>https://twitter.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-low" data-severity="low" data-category="service_known_breach" data-search="low service_known_breach dropbox.com has public breach history. review account. bw:9 dropbox user@company.io https://dropbox.com">
-              <td><span class="badge">low</span></td>
-              <td><span class="category">service known breach</span></td>
-              <td class="issue-cell"><strong>dropbox.com has public breach history.</strong><p>Review account.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>Dropbox</strong> <small>user@company.io</small> <code>bw:9</code> <em>https://dropbox.com</em></span></td>
-            </tr>
-            
-            <tr class="finding-row severity-obsolete" data-severity="obsolete" data-category="domain_missing" data-search="obsolete domain_missing domain retired-saas.example.com did not resolve. verify and consider removing. bw:24 retired saas admin@company.io https://retired-saas.example.com">
-              <td><span class="badge">obsolete</span></td>
-              <td><span class="category">domain missing</span></td>
-              <td class="issue-cell"><strong>Domain retired-saas.example.com did not resolve.</strong><p>Verify and consider removing.</p></td>
-              <td class="count-cell">1</td>
-              <td class="affected-cell"><span><strong>Retired SaaS</strong> <small>admin@company.io</small> <code>bw:24</code> <em>https://retired-saas.example.com</em></span></td>
-            </tr>
-            </tbody>
-      </table>
-    </div>
-    
-    </section>
+                    <article class="action-card severity-high">
+                        <div class="action-card-top">
+                            <span class="action-step">2</span>
+                            <span class="badge">high</span>
+                        </div>
+                        <h3>Break password reuse</h3>
+                        <strong>2 groups</strong>
+                        <small>Same secret elsewhere</small>
+                        <p>Start with high-risk services, then rerun the
+                            audit.</p>
+                        <button type="button" data-category-filter="reuse">Show
+                            affected</button>
+                    </article>
 
-    <section class="notice">
-      <strong>Safety note:</strong> This report contains account names, usernames, URLs, source indexes, and findings. Treat it as sensitive even though plaintext passwords are excluded.
-       Data sourced from <a href="https://2fa.directory/">2FA Directory</a> by <a href="https://github.com/2factorauth/">2factorauth</a>. Breach catalogue data sourced from <a href="https://haveibeenpwned.com/">Have I Been Pwned</a>.
-    </section>
-  </main>
-  <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-    <svg class="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-    <svg class="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-  </button>
-  <script>
+                    <article class="action-card severity-medium">
+                        <div class="action-card-top">
+                            <span class="action-step">3</span>
+                            <span class="badge">medium</span>
+                        </div>
+                        <h3>Strengthen security</h3>
+                        <strong>3 weak passwords · 2 insecure URLs · 3 missing
+                            2FAs</strong>
+                        <small>Weak passwords, insecure URLs, and 2FA
+                            gaps</small>
+                        <p>Upgrade passwords, use HTTPS, and enable 2FA.</p>
+                        <button type="button"
+                            data-category-filter="weak,insecure_http,two_factor_not_stored">Show
+                            affected</button>
+                    </article>
+
+                    <article class="action-card severity-low">
+                        <div class="action-card-top">
+                            <span class="action-step">4</span>
+                            <span class="badge">low</span>
+                        </div>
+                        <h3>Review services</h3>
+                        <strong>2 clusters · 2 breached services</strong>
+                        <small>Account clusters and breach history</small>
+                        <p>Consolidate clustered domains and review services
+                            with breach history.</p>
+                        <button type="button"
+                            data-category-filter="domain_concentration,service_known_breach">Show
+                            affected</button>
+                    </article>
+
+                    <article class="action-card severity-obsolete">
+                        <div class="action-card-top">
+                            <span class="action-step">5</span>
+                            <span class="badge">obsolete</span>
+                        </div>
+                        <h3>Confirm obsolete services</h3>
+                        <strong>1 group</strong>
+                        <small>1 entry affected</small>
+                        <p>DNS failed. Verify manually before removing — outages
+                            can cause false positives.</p>
+                        <button type="button"
+                            data-category-filter="domain_missing">Show
+                            affected</button>
+                    </article>
+                </div>
+            </section>
+
+            <section class="affected-heading">
+                <div>
+                    <p class="section-kicker">Affected entries</p>
+                    <h2>Selected findings</h2>
+                </div>
+                <p>Use an action button or the filters to inspect the accounts
+                    behind each issue.</p>
+            </section>
+
+            <section class="filters" aria-label="Report filters">
+                <label>
+                    Search
+                    <input id="search" type="search"
+                        placeholder="Search names, usernames, URLs, recommendations...">
+                </label>
+                <label>
+                    Severity
+                    <select id="severity-filter">
+                        <option value="all">All severities</option>
+                        <option value="critical">Critical</option><option
+                            value="high">High</option><option
+                            value="medium">Medium</option><option
+                            value="low">Low</option><option
+                            value="obsolete">Obsolete</option>
+                    </select>
+                </label>
+                <label>
+                    Category
+                    <select id="category-filter">
+                        <option value="all">All categories</option>
+                        <option value="breached">Breached</option><option
+                            value="domain_concentration">Domain
+                            Concentration</option><option
+                            value="domain_missing">Domain
+                            Missing</option><option
+                            value="duplicate">Duplicate</option><option
+                            value="empty">Empty</option><option
+                            value="insecure_http">Insecure Http</option><option
+                            value="reuse">Reuse</option><option
+                            value="service_known_breach">Service Known
+                            Breach</option><option
+                            value="two_factor_not_stored">Two Factor Not
+                            Stored</option><option value="weak">Weak</option>
+                    </select>
+                </label>
+                <button type="button" id="clear-filters">Clear filters</button>
+            </section>
+
+            <section class="active-filter" id="active-filter">Showing all
+                findings</section>
+
+            <section class="toolbar-result">
+                <span id="visible-count">20</span> visible findings
+            </section>
+
+            <section class="findings" id="findings">
+
+                <div class="findings-table-wrap">
+                    <table class="findings-table">
+                        <thead>
+                            <tr>
+                                <th>Severity</th>
+                                <th>Category</th>
+                                <th>Issue / recommendation</th>
+                                <th>Affected</th>
+                                <th>Entries</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="finding-row severity-critical"
+                                data-severity="critical"
+                                data-category="breached"
+                                data-search="critical breached password found in breach database. rotate immediately. bw:0 github dev@company.io https://github.com">
+                                <td><span class="badge">critical</span></td>
+                                <td><span class="category">breached</span></td>
+                                <td class="issue-cell"><strong>Password found in
+                                        breach database.</strong><p>Rotate
+                                        immediately.</p></td>
+                                <td class="count-cell">1</td>
+                                <td
+                                    class="affected-cell"><span><strong>GitHub</strong>
+                                        <small>dev@company.io</small>
+                                        <code>bw:0</code>
+                                        <em>https://github.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-critical"
+                                data-severity="critical"
+                                data-category="breached"
+                                data-search="critical breached password found in breach database. rotate immediately. bw:1 gmail user@gmail.com https://mail.google.com">
+                                <td><span class="badge">critical</span></td>
+                                <td><span class="category">breached</span></td>
+                                <td class="issue-cell"><strong>Password found in
+                                        breach database.</strong><p>Rotate
+                                        immediately.</p></td>
+                                <td class="count-cell">1</td>
+                                <td
+                                    class="affected-cell"><span><strong>Gmail</strong>
+                                        <small>user@gmail.com</small>
+                                        <code>bw:1</code>
+                                        <em>https://mail.google.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-critical"
+                                data-severity="critical" data-category="empty"
+                                data-search="critical empty no password stored. add a strong password. bw:5 netflix personal@gmail.com https://netflix.com">
+                                <td><span class="badge">critical</span></td>
+                                <td><span class="category">empty</span></td>
+                                <td class="issue-cell"><strong>No password
+                                        stored.</strong><p>Add a strong
+                                        password.</p></td>
+                                <td class="count-cell">1</td>
+                                <td
+                                    class="affected-cell"><span><strong>Netflix</strong>
+                                        <small>personal@gmail.com</small>
+                                        <code>bw:5</code>
+                                        <em>https://netflix.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-high"
+                                data-severity="high" data-category="reuse"
+                                data-search="high reuse same password on 2 services. use unique passwords. bw:2 aws console admin@company.io https://aws.amazon.com bw:3 slack user@company.io https://slack.com">
+                                <td><span class="badge">high</span></td>
+                                <td><span class="category">reuse</span></td>
+                                <td class="issue-cell"><strong>Same password on
+                                        2 services.</strong><p>Use unique
+                                        passwords.</p></td>
+                                <td class="count-cell">2</td>
+                                <td class="affected-cell"><span><strong>AWS
+                                            Console</strong>
+                                        <small>admin@company.io</small>
+                                        <code>bw:2</code>
+                                        <em>https://aws.amazon.com</em></span><span><strong>Slack</strong>
+                                        <small>user@company.io</small>
+                                        <code>bw:3</code>
+                                        <em>https://slack.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-high"
+                                data-severity="high" data-category="reuse"
+                                data-search="high reuse same password on 2 services. use unique passwords. bw:6 spotify personal@gmail.com https://spotify.com bw:7 linkedin user@gmail.com https://linkedin.com">
+                                <td><span class="badge">high</span></td>
+                                <td><span class="category">reuse</span></td>
+                                <td class="issue-cell"><strong>Same password on
+                                        2 services.</strong><p>Use unique
+                                        passwords.</p></td>
+                                <td class="count-cell">2</td>
+                                <td
+                                    class="affected-cell"><span><strong>Spotify</strong>
+                                        <small>personal@gmail.com</small>
+                                        <code>bw:6</code>
+                                        <em>https://spotify.com</em></span><span><strong>LinkedIn</strong>
+                                        <small>user@gmail.com</small>
+                                        <code>bw:7</code>
+                                        <em>https://linkedin.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-medium"
+                                data-severity="medium" data-category="weak"
+                                data-search="medium weak password shorter than 12 characters. use a longer password. bw:8 twitter user@gmail.com https://twitter.com">
+                                <td><span class="badge">medium</span></td>
+                                <td><span class="category">weak</span></td>
+                                <td class="issue-cell"><strong>Password shorter
+                                        than 12 characters.</strong><p>Use a
+                                        longer password.</p></td>
+                                <td class="count-cell">1</td>
+                                <td
+                                    class="affected-cell"><span><strong>Twitter</strong>
+                                        <small>user@gmail.com</small>
+                                        <code>bw:8</code>
+                                        <em>https://twitter.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-medium"
+                                data-severity="medium" data-category="weak"
+                                data-search="medium weak password shorter than 12 characters. use a longer password. bw:9 dropbox user@company.io https://dropbox.com">
+                                <td><span class="badge">medium</span></td>
+                                <td><span class="category">weak</span></td>
+                                <td class="issue-cell"><strong>Password shorter
+                                        than 12 characters.</strong><p>Use a
+                                        longer password.</p></td>
+                                <td class="count-cell">1</td>
+                                <td
+                                    class="affected-cell"><span><strong>Dropbox</strong>
+                                        <small>user@company.io</small>
+                                        <code>bw:9</code>
+                                        <em>https://dropbox.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-medium"
+                                data-severity="medium" data-category="weak"
+                                data-search="medium weak common pattern detected. use a random password. bw:10 jira dev@company.io https://jira.atlassian.net">
+                                <td><span class="badge">medium</span></td>
+                                <td><span class="category">weak</span></td>
+                                <td class="issue-cell"><strong>Common pattern
+                                        detected.</strong><p>Use a random
+                                        password.</p></td>
+                                <td class="count-cell">1</td>
+                                <td
+                                    class="affected-cell"><span><strong>Jira</strong>
+                                        <small>dev@company.io</small>
+                                        <code>bw:10</code>
+                                        <em>https://jira.atlassian.net</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-medium"
+                                data-severity="medium"
+                                data-category="insecure_http"
+                                data-search="medium insecure_http url uses plain http. switch to https. bw:22 old forum user@gmail.com http://forum.example.net">
+                                <td><span class="badge">medium</span></td>
+                                <td><span class="category">insecure
+                                        http</span></td>
+                                <td class="issue-cell"><strong>URL uses plain
+                                        HTTP.</strong><p>Switch to
+                                        HTTPS.</p></td>
+                                <td class="count-cell">1</td>
+                                <td class="affected-cell"><span><strong>Old
+                                            Forum</strong>
+                                        <small>user@gmail.com</small>
+                                        <code>bw:22</code>
+                                        <em>http://forum.example.net</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-medium"
+                                data-severity="medium"
+                                data-category="insecure_http"
+                                data-search="medium insecure_http url uses plain http. switch to https. bw:23 legacy wiki dev@company.io http://wiki.oldsite.org">
+                                <td><span class="badge">medium</span></td>
+                                <td><span class="category">insecure
+                                        http</span></td>
+                                <td class="issue-cell"><strong>URL uses plain
+                                        HTTP.</strong><p>Switch to
+                                        HTTPS.</p></td>
+                                <td class="count-cell">1</td>
+                                <td class="affected-cell"><span><strong>Legacy
+                                            Wiki</strong>
+                                        <small>dev@company.io</small>
+                                        <code>bw:23</code>
+                                        <em>http://wiki.oldsite.org</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-medium"
+                                data-severity="medium"
+                                data-category="two_factor_not_stored"
+                                data-search="medium two_factor_not_stored service supports totp but vault has no secret. enable 2fa. bw:1 gmail user@gmail.com https://mail.google.com">
+                                <td><span class="badge">medium</span></td>
+                                <td><span class="category">two factor not
+                                        stored</span></td>
+                                <td class="issue-cell"><strong>Service supports
+                                        TOTP but vault has no
+                                        secret.</strong><p>Enable 2FA.</p></td>
+                                <td class="count-cell">1</td>
+                                <td
+                                    class="affected-cell"><span><strong>Gmail</strong>
+                                        <small>user@gmail.com</small>
+                                        <code>bw:1</code>
+                                        <em>https://mail.google.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-medium"
+                                data-severity="medium"
+                                data-category="two_factor_not_stored"
+                                data-search="medium two_factor_not_stored service supports totp but vault has no secret. enable 2fa. bw:2 aws console admin@company.io https://aws.amazon.com">
+                                <td><span class="badge">medium</span></td>
+                                <td><span class="category">two factor not
+                                        stored</span></td>
+                                <td class="issue-cell"><strong>Service supports
+                                        TOTP but vault has no
+                                        secret.</strong><p>Enable 2FA.</p></td>
+                                <td class="count-cell">1</td>
+                                <td class="affected-cell"><span><strong>AWS
+                                            Console</strong>
+                                        <small>admin@company.io</small>
+                                        <code>bw:2</code>
+                                        <em>https://aws.amazon.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-medium"
+                                data-severity="medium"
+                                data-category="two_factor_not_stored"
+                                data-search="medium two_factor_not_stored service supports totp but vault has no secret. enable 2fa. bw:17 stripe admin@company.io https://stripe.com">
+                                <td><span class="badge">medium</span></td>
+                                <td><span class="category">two factor not
+                                        stored</span></td>
+                                <td class="issue-cell"><strong>Service supports
+                                        TOTP but vault has no
+                                        secret.</strong><p>Enable 2FA.</p></td>
+                                <td class="count-cell">1</td>
+                                <td
+                                    class="affected-cell"><span><strong>Stripe</strong>
+                                        <small>admin@company.io</small>
+                                        <code>bw:17</code>
+                                        <em>https://stripe.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-low"
+                                data-severity="low" data-category="duplicate"
+                                data-search="low duplicate these credentials are exact duplicates. keep newest, remove rest. bw:10 jira dev@company.io https://jira.atlassian.net bw:11 confluence dev@company.io https://confluence.atlassian.net">
+                                <td><span class="badge">low</span></td>
+                                <td><span class="category">duplicate</span></td>
+                                <td class="issue-cell"><strong>These credentials
+                                        are exact duplicates.</strong><p>Keep
+                                        newest, remove rest.</p></td>
+                                <td class="count-cell">2</td>
+                                <td
+                                    class="affected-cell"><span><strong>Jira</strong>
+                                        <small>dev@company.io</small>
+                                        <code>bw:10</code>
+                                        <em>https://jira.atlassian.net</em></span><span><strong>Confluence</strong>
+                                        <small>dev@company.io</small>
+                                        <code>bw:11</code>
+                                        <em>https://confluence.atlassian.net</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-low"
+                                data-severity="low" data-category="duplicate"
+                                data-search="low duplicate these credentials are exact duplicates. keep newest, remove rest. bw:12 docker hub dev@company.io https://hub.docker.com bw:13 npm dev@company.io https://npmjs.com">
+                                <td><span class="badge">low</span></td>
+                                <td><span class="category">duplicate</span></td>
+                                <td class="issue-cell"><strong>These credentials
+                                        are exact duplicates.</strong><p>Keep
+                                        newest, remove rest.</p></td>
+                                <td class="count-cell">2</td>
+                                <td class="affected-cell"><span><strong>Docker
+                                            Hub</strong>
+                                        <small>dev@company.io</small>
+                                        <code>bw:12</code>
+                                        <em>https://hub.docker.com</em></span><span><strong>NPM</strong>
+                                        <small>dev@company.io</small>
+                                        <code>bw:13</code>
+                                        <em>https://npmjs.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-low"
+                                data-severity="low"
+                                data-category="domain_concentration"
+                                data-search="low domain_concentration domain atlassian.net has 3 entries. review whether all needed. bw:10 jira dev@company.io https://jira.atlassian.net bw:11 confluence dev@company.io https://confluence.atlassian.net bw:12 docker hub dev@company.io https://hub.docker.com">
+                                <td><span class="badge">low</span></td>
+                                <td><span class="category">domain
+                                        concentration</span></td>
+                                <td class="issue-cell"><strong>Domain
+                                        atlassian.net has 3
+                                        entries.</strong><p>Review whether all
+                                        needed.</p></td>
+                                <td class="count-cell">3</td>
+                                <td
+                                    class="affected-cell"><span><strong>Jira</strong>
+                                        <small>dev@company.io</small>
+                                        <code>bw:10</code>
+                                        <em>https://jira.atlassian.net</em></span><span><strong>Confluence</strong>
+                                        <small>dev@company.io</small>
+                                        <code>bw:11</code>
+                                        <em>https://confluence.atlassian.net</em></span><span><strong>Docker
+                                            Hub</strong>
+                                        <small>dev@company.io</small>
+                                        <code>bw:12</code>
+                                        <em>https://hub.docker.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-low"
+                                data-severity="low"
+                                data-category="domain_concentration"
+                                data-search="low domain_concentration domain company.io has 2 entries. consolidate if possible. bw:14 pypi dev@company.io https://pypi.org bw:15 vercel dev@company.io https://vercel.com">
+                                <td><span class="badge">low</span></td>
+                                <td><span class="category">domain
+                                        concentration</span></td>
+                                <td class="issue-cell"><strong>Domain company.io
+                                        has 2 entries.</strong><p>Consolidate if
+                                        possible.</p></td>
+                                <td class="count-cell">2</td>
+                                <td
+                                    class="affected-cell"><span><strong>PyPI</strong>
+                                        <small>dev@company.io</small>
+                                        <code>bw:14</code>
+                                        <em>https://pypi.org</em></span><span><strong>Vercel</strong>
+                                        <small>dev@company.io</small>
+                                        <code>bw:15</code>
+                                        <em>https://vercel.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-low"
+                                data-severity="low"
+                                data-category="service_known_breach"
+                                data-search="low service_known_breach twitter.com has public breach history. review account. bw:8 twitter user@gmail.com https://twitter.com">
+                                <td><span class="badge">low</span></td>
+                                <td><span class="category">service known
+                                        breach</span></td>
+                                <td class="issue-cell"><strong>twitter.com has
+                                        public breach history.</strong><p>Review
+                                        account.</p></td>
+                                <td class="count-cell">1</td>
+                                <td
+                                    class="affected-cell"><span><strong>Twitter</strong>
+                                        <small>user@gmail.com</small>
+                                        <code>bw:8</code>
+                                        <em>https://twitter.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-low"
+                                data-severity="low"
+                                data-category="service_known_breach"
+                                data-search="low service_known_breach dropbox.com has public breach history. review account. bw:9 dropbox user@company.io https://dropbox.com">
+                                <td><span class="badge">low</span></td>
+                                <td><span class="category">service known
+                                        breach</span></td>
+                                <td class="issue-cell"><strong>dropbox.com has
+                                        public breach history.</strong><p>Review
+                                        account.</p></td>
+                                <td class="count-cell">1</td>
+                                <td
+                                    class="affected-cell"><span><strong>Dropbox</strong>
+                                        <small>user@company.io</small>
+                                        <code>bw:9</code>
+                                        <em>https://dropbox.com</em></span></td>
+                            </tr>
+
+                            <tr class="finding-row severity-obsolete"
+                                data-severity="obsolete"
+                                data-category="domain_missing"
+                                data-search="obsolete domain_missing domain retired-saas.example.com did not resolve. verify and consider removing. bw:24 retired saas admin@company.io https://retired-saas.example.com">
+                                <td><span class="badge">obsolete</span></td>
+                                <td><span class="category">domain
+                                        missing</span></td>
+                                <td class="issue-cell"><strong>Domain
+                                        retired-saas.example.com did not
+                                        resolve.</strong><p>Verify and consider
+                                        removing.</p></td>
+                                <td class="count-cell">1</td>
+                                <td class="affected-cell"><span><strong>Retired
+                                            SaaS</strong>
+                                        <small>admin@company.io</small>
+                                        <code>bw:24</code>
+                                        <em>https://retired-saas.example.com</em></span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </section>
+
+            <section class="notice">
+                <strong>Safety note:</strong> This report contains account
+                names, usernames, URLs, source indexes, and findings. Treat it
+                as sensitive even though plaintext passwords are excluded.
+                Data sourced from <a href="https://2fa.directory/">2FA
+                    Directory</a> by <a
+                    href="https://github.com/2factorauth/">2factorauth</a>.
+                Breach catalogue data sourced from <a
+                    href="https://haveibeenpwned.com/">Have I Been Pwned</a>.
+            </section>
+        </main>
+        <button type="button" id="theme-toggle" class="theme-toggle"
+            aria-label="Toggle theme">
+            <svg class="theme-icon-sun" width="18" height="18"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2"><circle cx="12" cy="12" r="5" /><path
+                    d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+            <svg class="theme-icon-moon" width="18" height="18"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2"><path
+                    d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
+        </button>
+        <script>
 const searchInput = document.querySelector('#search');
 const severityFilter = document.querySelector('#severity-filter');
 const categoryFilter = document.querySelector('#category-filter');
@@ -748,5 +1007,5 @@ themeToggle.addEventListener('click', () => {
   setTheme(current === 'dark' ? 'light' : 'dark');
 });
 </script>
-</body>
+    </body>
 </html>
